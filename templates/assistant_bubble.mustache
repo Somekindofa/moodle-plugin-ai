@@ -1,0 +1,67 @@
+{{!
+    AI Assistant floating bubble template
+}}
+<div id="ai-assistant-container" class="ai-assistant-container" data-course-id="{{courseId}}" data-user-id="{{userId}}">
+    <!-- Floating Bubble -->
+    <div id="ai-bubble" class="ai-bubble ai-bubble-{{apiStatus}}" title="Arts & Crafts AI Assistant">
+        <div class="ai-bubble-icon">
+            <svg class="chat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            <svg class="graduation-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+            </svg>
+        </div>
+    </div>
+
+    <!-- Chat Panel (hidden by default) -->
+    <div id="ai-chat-panel" class="ai-chat-panel" style="display: none;">
+        <!-- Header -->
+        <div class="ai-chat-header">
+            <div class="ai-chat-title">
+                <h3>{{#str}}assistant_title, local_aiassistant{{/str}}</h3>
+                <p class="ai-chat-subtitle">{{courseTitle}} • {{currentPage}}</p>
+            </div>
+            <div class="ai-chat-controls">
+                <span class="ai-status ai-status-{{apiStatus}}">
+                    <span class="ai-status-dot"></span>
+                    {{#str}}api_{{apiStatus}}, local_aiassistant{{/str}}
+                </span>
+                <button id="ai-close-btn" class="ai-close-btn" aria-label="Close">×</button>
+            </div>
+        </div>
+
+        <!-- Messages Area -->
+        <div id="ai-messages" class="ai-messages">
+            <div class="ai-message ai-message-assistant">
+                <div class="ai-message-content">
+                    Hello! I'm your Arts & Crafts AI Assistant. I can help you with course materials, techniques, and answer any questions about your current lesson.
+                </div>
+            </div>
+        </div>
+
+        <!-- Document Panel -->
+        <div id="ai-documents-panel" class="ai-documents-panel" style="display: none;">
+            <div class="ai-documents-header">
+                <h4>{{#str}}documents_found, local_aiassistant{{/str}}</h4>
+                <button id="ai-documents-close" class="ai-documents-close">‹</button>
+            </div>
+            <div id="ai-documents-list" class="ai-documents-list"></div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="ai-input-area">
+            <div id="ai-suggestions" class="ai-suggestions"></div>
+            <div class="ai-input-container">
+                <input type="text" id="ai-input" class="ai-input" placeholder="{{#str}}ask_question, local_aiassistant{{/str}}">
+                <button id="ai-send-btn" class="ai-send-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="22" y1="2" x2="11" y2="13"/>
+                        <polygon points="22,2 15,22 11,13 2,9"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
