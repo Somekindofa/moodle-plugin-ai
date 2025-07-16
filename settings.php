@@ -14,11 +14,20 @@ if ($hassiteconfig) {
         PARAM_URL
     ));
     
-    $settings->add(new admin_setting_configpasswordunmask(
+    // $settings->add(new admin_setting_configpasswordunmask(
+    //     'local_aiassistant/api_key',
+    //     get_string('api_key', 'local_aiassistant'),
+    //     get_string('api_key_desc', 'local_aiassistant'),
+    //     ''
+    // ));
+
+    $settings->add(new admin_setting_configtext(
         'local_aiassistant/api_key',
         get_string('api_key', 'local_aiassistant'),
         get_string('api_key_desc', 'local_aiassistant'),
-        ''
+        '',
+        PARAM_TEXT,
+        60  // largeur du champ
     ));
     
     $settings->add(new admin_setting_configcheckbox(
