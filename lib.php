@@ -35,7 +35,7 @@ function local_aiassistant_before_footer() {
     ];
     
     // Include CSS and JavaScript
-    $PAGE->requires->css(new moodle_url('/local/aiassistant/styles/assistant.css'));
+    $PAGE->requires->css('/local/aiassistant/styles/assistant.css', true);
     $PAGE->requires->js_call_amd('local_aiassistant/assistant', 'init', [$assistant_data]);
     
     // Output the HTML structure
