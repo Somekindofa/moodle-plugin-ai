@@ -35,7 +35,7 @@ function local_aiassistant_before_footer() {
     ];
     
     // Include CSS and JavaScript
-    $PAGE->requires->css('/local/aiassistant/styles/assistant.css', true);
+    // $PAGE->requires->css('/local/aiassistant/styles/assistant.css');
     $PAGE->requires->js_call_amd('local_aiassistant/assistant', 'init', [$assistant_data]);
     
     // Output the HTML structure
@@ -73,6 +73,18 @@ function local_aiassistant_check_api_status() {
     }
     
     return 'offline';
+}
+
+function local_aiassistant_before_headers() {
+    global $PAGE;
+    
+    // Ne pas charger sur la page de connexion
+    if ($PAGE->pagelayout == 'login' || during_initial_install()) {
+        return;
+    }
+    
+    // Charger le CSS ici, avant le <head>
+    $PAGE->requires->css('/local/aiassistant/styles/assistant.css');
 }
 
 /**
