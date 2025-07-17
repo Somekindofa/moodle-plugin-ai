@@ -131,3 +131,23 @@ function local_aiassistant_get_page_context() {
     
     return $context;
 }
+
+/**
+ * Hook to add CSS before page header is printed
+ */
+function local_ai_before_standard_html_head() {
+    global $PAGE;
+    
+    // Load CSS files here instead of in other hooks
+    $PAGE->requires->css('/local/ai/styles.css');
+}
+
+/**
+ * Hook that runs before page output
+ */
+function local_ai_before_http_headers() {
+    global $PAGE;
+    
+    // Any CSS that needs to be loaded should go here
+    $PAGE->requires->css('/local/ai/css/plugin.css');
+}
