@@ -144,10 +144,37 @@ class block_aiassistant extends block_base {
         return $html;
     }
     
+    /**
+     * Defines the page formats where this block can be displayed.
+     *
+     * Available formats include:
+     * - 'all' => true: Display on all page types
+     * - 'site' => true: Site front page
+     * - 'course' => true: Course pages
+     * - 'course-category' => true: Course category pages
+     * - 'my' => true: Dashboard/My Moodle page
+     * - 'user' => true: User profile pages
+     * - 'mod' => true: Activity/module pages
+     * - 'tag' => true: Tag pages
+     * - 'admin' => true: Admin pages
+     * - 'blog' => true: Blog pages
+     * - 'calendar' => true: Calendar pages
+     *
+     * @return array Array of applicable formats with boolean values
+     */
     public function applicable_formats() {
-        return array('all' => true);
+        return array('all' => true); # if we only want it to be shown on page types "course" and "dashboard" then use: return array('course' => true, 'my' => true);
     }
     
+    /**
+     * Determines whether multiple instances of this block can exist on a single page.
+     *
+     * This method controls the block instance multiplicity behavior. When returning false,
+     * only one instance of this block type can be added to any given page, preventing
+     * duplicate block placements.
+     *
+     * @return bool False to allow only one instance per page, true to allow multiple instances
+     */
     public function instance_allow_multiple() {
         return false;
     }
