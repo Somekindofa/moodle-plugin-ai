@@ -69,7 +69,7 @@ class get_user_credentials extends external_api {
                 'message' => 'Created new API key'
             ];
 
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return [
                 'success' => false,
                 'api_key' => '',
