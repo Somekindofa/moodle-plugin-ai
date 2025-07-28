@@ -54,12 +54,12 @@ class credential_service {
             $record->display_name = $fireworks_response['displayName'];
             $record->created_time = time();
             $record->is_active = 1;
-        } catch (Exception $e) {
+            return $DB->insert_record('block_aiassistant_keys', $record);
+        } catch (\Exception $e) {
             error_log('Database error: ' . $e->getMessage());
             throw $e;
         }
         
-        return $DB->insert_record('block_aiassistant_keys', $record);
     }
 
     public function get_user_credentials($user_id) {
