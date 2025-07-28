@@ -96,8 +96,9 @@ class block_aiassistant extends block_base {
         </style>
         
         <script>
-        require(['core/ajax', 'core/notification'], function(Ajax, Notification) {
-            document.addEventListener(\"DOMContentLoaded\", function() {
+        
+        document.addEventListener(\"DOMContentLoaded\", function() {
+            require(['core/ajax', 'core/notification'], function(Ajax) {
                 const sendButton = document.getElementById(\"ai-chat-send\");
                 const chatInput = document.getElementById(\"ai-chat-input\");
                 const messagesContainer = document.getElementById(\"ai-chat-messages\");
