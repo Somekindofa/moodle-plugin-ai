@@ -43,7 +43,7 @@ class credential_service {
     public function store_user_api_key($user_id, $fireworks_response) {
         global $DB;
         
-        $record = new stdClass();
+        $record = new \stdClass();
         $record->userid = $user_id;
         $record->fireworks_key_id = $fireworks_response['keyId'];
         $record->fireworks_api_key = $fireworks_response['key'];
