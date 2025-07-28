@@ -59,7 +59,7 @@ class get_user_credentials extends external_api {
             }
 
             // No existing key, create new one
-            $credential_service = new \credential_service(get_config('block_aiassistant', 'fireworks_account_id'));
+            $credential_service = new \block_aiassistant\credential_service(get_config('block_aiassistant', 'fireworks_account_id'));
             $api_key = $credential_service->generate_user_api_key($USER->id);
 
             return [
