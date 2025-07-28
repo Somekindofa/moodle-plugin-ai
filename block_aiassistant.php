@@ -23,17 +23,16 @@ class block_aiassistant extends block_base {
     
     private function get_chat_interface() {
         global $USER, $COURSE;
-        
-        $html = '
-        <div class="ai-chat-container">
-            <div class="ai-chat-messages" id="ai-chat-messages">
-                <div class="ai-message">
+        $html = "
+        <div class=\"ai-chat-container\">
+            <div class=\"ai-chat-messages\" id=\"ai-chat-messages\">
+                <div class=\"ai-message\">
                     <strong>AI Assistant:</strong> Hello! How can I help you today?
                 </div>
             </div>
-            <div class="ai-chat-input">
-                <textarea id="ai-chat-input" placeholder="Type your message here..." rows="3"></textarea>
-                <button id="ai-chat-send" type="button">Send</button>
+            <div class=\"ai-chat-input\">
+                <textarea id=\"ai-chat-input\" placeholder=\"Type your message here...\" rows=\"3\"></textarea>
+                <button id=\"ai-chat-send\" type=\"button\">Send</button>
             </div>
         </div>
         
@@ -95,30 +94,31 @@ class block_aiassistant extends block_base {
             background: #005a87;
         }
         </style>
-            <script>
+        
+        <script>
         require(['core/ajax', 'core/notification'], function(Ajax, Notification) {
-            document.addEventListener("DOMContentLoaded", function() {
-                const sendButton = document.getElementById("ai-chat-send");
-                const chatInput = document.getElementById("ai-chat-input");
-                const messagesContainer = document.getElementById("ai-chat-messages");
+            document.addEventListener(\"DOMContentLoaded\", function() {
+                const sendButton = document.getElementById(\"ai-chat-send\");
+                const chatInput = document.getElementById(\"ai-chat-input\");
+                const messagesContainer = document.getElementById(\"ai-chat-messages\");
                 
                 function sendMessage() {
                     const message = chatInput.value.trim();
                     if (!message) return;
                     
                     // Add user message
-                    const userMessageDiv = document.createElement("div");
-                    userMessageDiv.className = "user-message";
-                    userMessageDiv.innerHTML = "<strong>You:</strong> " + message;
+                    const userMessageDiv = document.createElement(\"div\");
+                    userMessageDiv.className = \"user-message\";
+                    userMessageDiv.innerHTML = \"<strong>You:</strong> \" + message;
                     messagesContainer.appendChild(userMessageDiv);
                     
                     // Clear input
-                    chatInput.value = "";
+                    chatInput.value = \"\";
                     
                     // Show loading state
-                    const loadingDiv = document.createElement("div");
-                    loadingDiv.className = "ai-message";
-                    loadingDiv.innerHTML = "<strong>AI Assistant:</strong> <em>Getting your credentials...</em>";
+                    const loadingDiv = document.createElement(\"div\");
+                    loadingDiv.className = \"ai-message\";
+                    loadingDiv.innerHTML = \"<strong>AI Assistant:</strong> <em>Getting your credentials...</em>\";
                     messagesContainer.appendChild(loadingDiv);
                     
                     // Get user credentials via AJAX
@@ -133,9 +133,9 @@ class block_aiassistant extends block_base {
                                 // Now make the actual chat request using those credentials
                                 sendChatMessage(message, credentials.api_key);
                             } else {
-                                const errorDiv = document.createElement("div");
-                                errorDiv.className = "ai-message";
-                                errorDiv.innerHTML = "<strong>AI Assistant:</strong> <em>Error: " + credentials.message + "</em>";
+                                const errorDiv = document.createElement(\"div\");
+                                errorDiv.className = \"ai-message\";
+                                errorDiv.innerHTML = \"<strong>AI Assistant:</strong> <em>Error: \" + credentials.message + \"</em>\";
                                 messagesContainer.appendChild(errorDiv);
                             }
                         },
@@ -143,9 +143,9 @@ class block_aiassistant extends block_base {
                             // Remove loading message
                             messagesContainer.removeChild(loadingDiv);
                             
-                            const errorDiv = document.createElement("div");
-                            errorDiv.className = "ai-message";
-                            errorDiv.innerHTML = "<strong>AI Assistant:</strong> <em>Failed to get credentials: " + error.message + "</em>";
+                            const errorDiv = document.createElement(\"div\");
+                            errorDiv.className = \"ai-message\";
+                            errorDiv.innerHTML = \"<strong>AI Assistant:</strong> <em>Failed to get credentials: \" + error.message + \"</em>\";
                             messagesContainer.appendChild(errorDiv);
                         }
                     }]);
@@ -158,9 +158,9 @@ class block_aiassistant extends block_base {
                     // TODO: Implement actual chat with AI using the apiKey
                     // For now, just simulate a response
                     setTimeout(function() {
-                        const aiMessageDiv = document.createElement("div");
-                        aiMessageDiv.className = "ai-message";
-                        aiMessageDiv.innerHTML = "<strong>AI Assistant:</strong> I received your message: \"" + message + "\". API key ready: " + apiKey.substring(0, 10) + "...";
+                        const aiMessageDiv = document.createElement(\"div\");
+                        aiMessageDiv.className = \"ai-message\";
+                        aiMessageDiv.innerHTML = \"<strong>AI Assistant:</strong> I received your message: \\\"\" + message + \"\\\". API key ready: \" + apiKey.substring(0, 10) + \"...\";
                         messagesContainer.appendChild(aiMessageDiv);
                         
                         // Scroll to bottom
@@ -168,17 +168,17 @@ class block_aiassistant extends block_base {
                     }, 1000);
                 }
                 
-                sendButton.addEventListener("click", sendMessage);
+                sendButton.addEventListener(\"click\", sendMessage);
                 
-                chatInput.addEventListener("keypress", function(e) {
-                    if (e.key === "Enter" && !e.shiftKey) {
+                chatInput.addEventListener(\"keypress\", function(e) {
+                    if (e.key === \"Enter\" && !e.shiftKey) {
                         e.preventDefault();
                         sendMessage();
                     }
                 });
             });
         });
-        </script>';
+        </script>";
         
         return $html;
     }
