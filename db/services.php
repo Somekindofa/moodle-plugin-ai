@@ -5,7 +5,7 @@ defined('MOODLE_INTERNAL') || die();
 
 $functions = [
     'block_aiassistant_get_user_credentials' => [
-        'classname'   => 'block_aiassistant_external',
+        'classname'   => 'block_aiassistant\external\get_user_credentials',
         'methodname'  => 'get_user_credentials',
         'description' => 'Get user credentials for AI API access',
         'type'        => 'read',
