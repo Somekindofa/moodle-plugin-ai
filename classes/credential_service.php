@@ -43,13 +43,18 @@ class credential_service {
     public function store_user_api_key($user_id, $fireworks_response) {
         global $DB;
         
-        $record = new \stdClass();
-        $record->userid = $user_id;
-        $record->fireworks_key_id = $fireworks_response['keyId'];
-        $record->fireworks_api_key = $fireworks_response['key'];
-        $record->display_name = $fireworks_response['displayName'];
-        $record->created_time = time();
-        $record->is_active = 1;
+        try {
+            $record = new \stdClass();
+            $record->userid = $user_id;
+            $record->fireworks_key_id = $fireworks_response['keyId'];
+            $record->fireworks_api_key = $fireworks_response['key'];
+            $record->display_name = $fireworks_response['displayName'];
+            $record->created_time = time();
+            $record->is_active = 1;
+        } catch (Exception $e) {
+            error_log('Database error: ' . $e->getMessage());
+            throw $e;
+        }
         
         return $DB->insert_record('block_aiassistant_keys', $record);
     }
