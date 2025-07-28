@@ -4,7 +4,10 @@
 defined('MOODLE_INTERNAL') || die();
 
 if ($ADMIN->fulltree) {
-    
+    // Create the settings page
+    $settings = new admin_settingpage('blocksettingaiassistant', 
+                                     get_string('pluginname', 'block_aiassistant'));
+
     $settings->add(new admin_setting_configtext(
         'block_aiassistant/fireworks_account_id',
         get_string('fireworks_account_id', 'block_aiassistant'),
