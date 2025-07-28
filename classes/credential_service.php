@@ -9,7 +9,7 @@ class credential_service {
     
     public function __construct($account_id) {
         if (empty($account_id)) {
-            throw new Exception('Fireworks account ID not configured');
+            throw new \Exception('Fireworks account ID not configured');
         }
         $this->account_id = $account_id;
     }
