@@ -1,5 +1,8 @@
 <?php
 // This file is part of Moodle - http://moodle.org/
+namespace block_aiassistant;
+
+defined('MOODLE_INTERNAL') || die();
 
 class credential_service {
     private $account_id;
@@ -14,12 +17,11 @@ class credential_service {
         
         # HTTP request
         $response = $this->make_api_request($url, $payload);
-        
-        // Store in database
-        $this->store_user_api_key($user_id, $response['key']);
+          // Store in database
+        $this->store_user_api_key($user_id, $response);
         
         // Return the key
-        return $response['api_key'];
+        return $response['key'];
     }
 
     private function make_api_request($url, $payload) {
@@ -27,10 +29,9 @@ class credential_service {
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);        curl_setopt($ch, CURLOPT_HTTPHEADER, [
             'Content-Type: application/json',
-            'Authorization: Bearer YOUR_API_TOKEN_HERE'
+            'Authorization: Bearer ' . get_config('block_aiassistant', 'fireworks_api_token')
         ]);
         
         $response = curl_exec($ch);
@@ -51,6 +52,33 @@ class credential_service {
         $record->is_active = 1;
         
         return $DB->insert_record('block_aiassistant_keys', $record);
+    }
+
+    public function get_user_credentials($user_id) {
+        global $DB;
+        
+        // Check if user already has an active API key
+        $existing_key = $DB->get_record('block_aiassistant_keys', [
+            'userid' => $user_id,
+            'is_active' => 1
+        ]);
+
+        if ($existing_key) {
+            return [
+                'api_key' => $existing_key->fireworks_api_key,
+                'display_name' => $existing_key->display_name,
+                'exists' => true
+            ];
+        }
+
+        // No existing key, create new one
+        $api_key = $this->generate_user_api_key($user_id);
+        
+        return [
+            'api_key' => $api_key,
+            'display_name' => "moodle-user-{$user_id}",
+            'exists' => false
+        ];
     }
 
 }
