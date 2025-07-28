@@ -23,4 +23,7 @@ if ($ADMIN->fulltree) {
         '',
         PARAM_TEXT
     ));
+
+    // Register the settings page
+    $ADMIN->add('blocksettings', $settings);
 }
