@@ -38,9 +38,11 @@ class credential_service {
         ]);
         
         $response = curl_exec($ch);
+        $decoded = json_decode($response, true);
+        error_log('Fireworks API response: ' . print_r($decoded, true));
         curl_close($ch);
-        
-        return json_decode($response, true);
+
+        return $decoded;
     }
 
     public function store_user_api_key($user_id, $fireworks_response) {
@@ -53,6 +55,7 @@ class credential_service {
             $record->fireworks_api_key = $fireworks_response['key'];
             $record->display_name = $fireworks_response['displayName'];
             $record->created_time = time();
+            $record->last_used = null; // Not used yet
             $record->is_active = 1;
             return $DB->insert_record('block_aiassistant_keys', $record);
         } catch (\Exception $e) {
