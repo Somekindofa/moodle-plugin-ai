@@ -43,6 +43,16 @@ class get_user_credentials extends external_api {
         require_login();
 
         try {
+            // Debug: Check if table exists
+            if (!$DB->get_manager()->table_exists('block_aiassistant_keys')) {
+                return [
+                    'success' => false,
+                    'api_key' => '',
+                    'display_name' => '',
+                    'message' => 'Table block_aiassistant_keys does not exist in database'
+                ];
+            }
+
             // Check if user already has an active API key
             $existing_key = $DB->get_record('block_aiassistant_keys', [
                 'userid' => $USER->id,
