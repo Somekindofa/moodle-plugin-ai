@@ -4,6 +4,12 @@
 defined('MOODLE_INTERNAL') || die();
 
 class block_aiassistant extends block_base {
+    /**
+     * Set block to have configuration settings
+     */
+    public function has_config() {
+        return true;
+    }
     
     public function init() {
         $this->title = get_string('pluginname', 'block_aiassistant');
