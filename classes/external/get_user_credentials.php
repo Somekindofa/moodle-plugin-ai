@@ -73,6 +73,7 @@ class get_user_credentials extends external_api {
             
             // Debug: Check if config value exists
             debugging('Fireworks Account ID retrieved: ' . var_export($fireworks_account_id, true), DEBUG_DEVELOPER);
+            error_log('DEBUG: Fireworks Account ID: ' . var_export($fireworks_account_id, true));
             
             if (empty($fireworks_account_id)) {
                 return [
