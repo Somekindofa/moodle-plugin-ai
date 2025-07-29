@@ -1,34 +1,25 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-
-<XMLDB PATH="blocks/aiassistant/db" VERSION="20250728" COMMENT="XMLDB file for Moodle block_aiassistant">
-  
+<XMLDB PATH="blocks/aiassistant/db" VERSION="20250729" COMMENT="XMLDB file for Moodle block_aiassistant">
   <TABLES>
-    
     <TABLE NAME="block_aiassistant_keys" COMMENT="Stores API keys for each user">
-      
       <FIELDS>
-        <FIELD NAME="id"                TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
-        <FIELD NAME="userid"            TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="Moodle user ID"/>
-        <FIELD NAME="fireworks_key_id"  TYPE="char" LENGTH="255" NOTNULL="true" COMMENT="Key ID from Fireworks API response"/>
-        <FIELD NAME="fireworks_api_key" TYPE="char" LENGTH="255" NOTNULL="true" COMMENT="The actual API key"/>
-        <FIELD NAME="display_name"      TYPE="char" LENGTH="100" NOTNULL="true" COMMENT="Display name used when creating the key"/>
-        <FIELD NAME="created_time"      TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="Unix timestamp when key was created"/>
-        <FIELD NAME="last_used"         TYPE="int" LENGTH="10" NOTNULL="false" COMMENT="Unix timestamp when key was last used"/>
-        <FIELD NAME="is_active"         TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" COMMENT="1 if active, 0 if revoked"/>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true"/>
+        <FIELD NAME="fireworks_key_id" TYPE="text" NOTNULL="true"/>
+        <FIELD NAME="fireworks_api_key" TYPE="text" NOTNULL="true"/>
+        <FIELD NAME="display_name" TYPE="char" LENGTH="100" NOTNULL="true"/>
+        <FIELD NAME="created_time" TYPE="int" LENGTH="10" NOTNULL="true"/>
+        <FIELD NAME="last_used" TYPE="int" LENGTH="10" NOTNULL="false"/>
+        <FIELD NAME="is_active" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1"/>
       </FIELDS>
-      
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
         <KEY NAME="userid_key" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
       </KEYS>
-      
       <INDEXES>
         <INDEX NAME="userid_active" UNIQUE="false" FIELDS="userid, is_active"/>
         <INDEX NAME="fireworks_key_id" UNIQUE="true" FIELDS="fireworks_key_id"/>
       </INDEXES>
-    
     </TABLE>
-  
   </TABLES>
-
 </XMLDB>
