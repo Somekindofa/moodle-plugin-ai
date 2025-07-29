@@ -21,12 +21,20 @@ function xmldb_block_aiassistant_upgrade($oldversion) {
     
     $dbman = $DB->get_manager();
 
+    // Debug output
+    error_log("AI Assistant upgrade called: oldversion = $oldversion");
+
     // Add upgrade steps here as needed
-    if ($oldversion < 2025072909) {
+    if ($oldversion < 2025072910) {
+        
+        error_log("AI Assistant: Creating table block_aiassistant_keys");
         
         // Define table block_aiassistant_keys to be created
         $table = new xmldb_table('block_aiassistant_keys');
 
+        // Don't check if table exists - just try to create it
+        // The XMLDB system handles this properly
+        
         // Adding fields to table block_aiassistant_keys
         $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
         $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
@@ -45,13 +53,17 @@ function xmldb_block_aiassistant_upgrade($oldversion) {
         $table->add_index('userid_active', XMLDB_INDEX_NOTUNIQUE, ['userid', 'is_active']);
         $table->add_index('fireworks_key_id', XMLDB_INDEX_UNIQUE, ['fireworks_key_id']);
 
-        // Conditionally launch create table for block_aiassistant_keys
+        // Create table 
         if (!$dbman->table_exists($table)) {
             $dbman->create_table($table);
+            error_log("AI Assistant: Table created successfully");
+        } else {
+            error_log("AI Assistant: Table already exists");
         }
 
         // Aiassistant savepoint reached
-        upgrade_block_savepoint(true, 2025072909, 'aiassistant');
+        upgrade_block_savepoint(true, 2025072910, 'aiassistant');
+        error_log("AI Assistant: Upgrade completed successfully");
     }
 
     return true;
