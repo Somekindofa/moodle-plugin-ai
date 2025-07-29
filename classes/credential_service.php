@@ -28,22 +28,46 @@ class credential_service {
     }
 
     private function make_api_request($url, $payload) {
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/json',
-            'Authorization: Bearer ' . get_config('block_aiassistant', 'fireworks_api_token')
-        ]);
-        
-        $response = curl_exec($ch);
-        $decoded = json_decode($response, true);
-        error_log('Fireworks API response: ' . print_r($decoded, true));
-        curl_close($ch);
+        $api_token = 
 
-        return $decoded;
+        $curl = curl_init();
+
+        curl_setopt_array($curl, [
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_ENCODING => "",
+            CURLOPT_MAXREDIRS => 10,
+            CURLOPT_TIMEOUT => 30,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_CUSTOMREQUEST => "POST",
+            CURLOPT_POSTFIELDS => json_encode($payload),
+            CURLOPT_HTTPHEADER => [
+                "Authorization: Bearer {$api_token}",
+                "Content-Type: application/json"
+            ],
+        ]);
+
+        $response = curl_exec($curl);
+        $http_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+        $err = curl_error($curl);
+
+        curl_close($curl);
+
+        if ($err) {
+            throw new \Exception("cURL Error: " . $err);
+        }
+
+        $decoded_response = json_decode($response, true);
+        
+        if ($http_code !== 200) {
+            throw new \Exception("API request failed with HTTP code {$http_code}: " . $response);
+        }
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new \Exception("Invalid JSON response: " . json_last_error_msg());
+        }
+
+        return $decoded_response;
     }
 
     public function store_user_api_key($user_id, $fireworks_response) {
