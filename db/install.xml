@@ -5,8 +5,8 @@
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true"/>
-        <FIELD NAME="fireworks_key_id" TYPE="text" NOTNULL="true"/>
-        <FIELD NAME="fireworks_api_key" TYPE="text" NOTNULL="true"/>
+        <FIELD NAME="fireworks_key_id" TYPE="char" LENGTH="255" NOTNULL="true"/>
+        <FIELD NAME="fireworks_api_key" TYPE="char" LENGTH="255" NOTNULL="true"/>
         <FIELD NAME="display_name" TYPE="char" LENGTH="100" NOTNULL="true"/>
         <FIELD NAME="created_time" TYPE="int" LENGTH="10" NOTNULL="true"/>
         <FIELD NAME="last_used" TYPE="int" LENGTH="10" NOTNULL="false"/>
