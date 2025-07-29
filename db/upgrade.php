@@ -8,6 +8,8 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+require_once($CFG->libdir.'/ddllib.php'); // Include ddllib for xmldb constants
+
 /**
  * Upgrade script for block_aiassistant
  *
@@ -20,7 +22,7 @@ function xmldb_block_aiassistant_upgrade($oldversion) {
     $dbman = $DB->get_manager();
 
     // Add upgrade steps here as needed
-    if ($oldversion < 2025072908) {
+    if ($oldversion < 2025072909) {
         
         // Define table block_aiassistant_keys to be created
         $table = new xmldb_table('block_aiassistant_keys');
@@ -49,7 +51,7 @@ function xmldb_block_aiassistant_upgrade($oldversion) {
         }
 
         // Aiassistant savepoint reached
-        upgrade_block_savepoint(true, 2025072908, 'aiassistant');
+        upgrade_block_savepoint(true, 2025072909, 'aiassistant');
     }
 
     return true;
