@@ -58,6 +58,10 @@ class credential_service {
             throw new \Exception("cURL Error: " . $err);
         }
 
+        if ($http_code !== 200) {
+            throw new \Exception("API request failed with HTTP code {$http_code}: " . $response);
+        }
+
         $decoded_response = json_decode($response, true);
 
         if (isset($decoded_response['code']) && $decoded_response['code'] !== 0) {
@@ -67,10 +71,6 @@ class credential_service {
 
         if (!isset($decoded_response['key']) || !isset($decoded_response['keyId'])) {
             throw new \Exception("Invalid API response: missing required fields");
-        }
-        
-        if ($http_code !== 200) {
-            throw new \Exception("API request failed with HTTP code {$http_code}: " . $response);
         }
 
         if (json_last_error() !== JSON_ERROR_NONE) {
