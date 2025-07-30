@@ -18,9 +18,10 @@ class credential_service {
         $url = "https://api.fireworks.ai/v1/accounts/{$this->account_id}/apiKeys";
         $payload = ["apiKey" => ["displayName" => "moodle-user-{$user_id}"]];
         
-        # HTTP request
+        // HTTP request
         $response = $this->make_api_request($url, $payload);
-          // Store in database
+
+        // Store in database
         $this->store_user_api_key($user_id, $response);
         
         // Return the key
@@ -28,7 +29,7 @@ class credential_service {
     }
 
     private function make_api_request($url, $payload) {
-        $api_token = 
+        $api_token = get_config('block_aiassistant', 'fireworks_api_token');
 
         $curl = curl_init();
 
@@ -58,6 +59,15 @@ class credential_service {
         }
 
         $decoded_response = json_decode($response, true);
+
+        if (isset($decoded_response['code']) && $decoded_response['code'] !== 0) {
+            throw new \Exception("Fireworks API error (code {$decoded_response['code']}): " . 
+                                ($decoded_response['message'] ?? 'Unknown error'));
+        }
+
+        if (!isset($decoded_response['key']) || !isset($decoded_response['keyId'])) {
+            throw new \Exception("Invalid API response: missing required fields");
+        }
         
         if ($http_code !== 200) {
             throw new \Exception("API request failed with HTTP code {$http_code}: " . $response);
