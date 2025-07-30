@@ -19,7 +19,8 @@ class credential_service {
         $payload = ["apiKey" => ["displayName" => "moodle-user-{$user_id}"]];
         
         // HTTP request
-        $response = $this->make_api_request($url, $payload);
+        // $response = $this->make_api_request($url, $payload);
+        $response = $this->make_api_request($user_id);
 
         // Store in database
         $this->store_user_api_key($user_id, $response);
@@ -28,8 +29,26 @@ class credential_service {
         return $response['key'];
     }
 
-    private function make_api_request($url, $payload) {
+    private function make_api_request($user_id) {
         $api_token = get_config('block_aiassistant', 'fireworks_api_token');
+        $firectl_path = '/usr/local/bin/firectl';
+        putenv("HOME=/tmp");
+        putenv("FIREWORKS_API_KEY={$api_token}");
+        
+        $create_account_cmd = "HOME=/tmp {$firectl_path} create user --user-id \"{$service_account_id}\" --service-account";
+        $account_result = shell_exec($create_account_cmd . ' 2>&1');
+
+        if (strpos($account_result, 'error') !== false && strpos($account_result, 'already exists') === false) {
+            throw new \Exception("Failed to create service account: " . $account_result);
+        }
+
+        // Create API key for the service account
+        $create_key_cmd = "HOME=/tmp {$firectl_path} create api-key --service-account \"{$service_account_id}\"";
+        $key_result = shell_exec($create_key_cmd . ' 2>&1');
+        
+        if (strpos($key_result, 'error') !== false) {
+            throw new \Exception("Failed to create API key: " . $key_result);
+        }
 
         $curl = curl_init();
 
