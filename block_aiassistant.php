@@ -21,7 +21,7 @@ class block_aiassistant extends block_base {
         }
         
         $this->content = new stdClass;
-        $this->content->text = $this->get_chat_interface();
+        $this->content->text = $this->get_chat_interface(); 
         $this->content->footer = '';
         
         return $this->content;
