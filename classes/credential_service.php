@@ -53,11 +53,18 @@ class credential_service {
         $service_account_id = get_config('block_aiassistant', 'fireworks_account_id');
         
         // Create API key under your existing service account
-        $create_key_cmd = "HOME=/tmp FIREWORKS_API_KEY={$api_token} {$firectl_path} create api-key --service-account \"{$service_account_id}\"";
+        $signin_cmd = '{$firectl_path} signin "dupontg99-27dbce"'
+        $signin_result = shell_exec($signin_cmd . ' 2>&1');
+
+        error_log("firectl sign in output: " . $signin_result);
+        if (strpos($signin_result, 'error') !== false) {
+            throw new \Exception("Failed to create API key: " . $signin_result);
+        }
+
+        $create_key_cmd = "HOME=/tmp {$firectl_path} create api-key --service-account {$service_account_id}";
         $key_result = shell_exec($create_key_cmd . ' 2>&1');
         
         error_log("API key creation output: " . $key_result);
-        
         if (strpos($key_result, 'error') !== false) {
             throw new \Exception("Failed to create API key: " . $key_result);
         }
