@@ -15,8 +15,8 @@ class credential_service {
     }
     
     public function generate_user_api_key($user_id) {
-        $url = "https://api.fireworks.ai/v1/accounts/{$this->account_id}/apiKeys";
-        $payload = ["apiKey" => ["displayName" => "moodle-user-{$user_id}"]];
+        // $url = "https://api.fireworks.ai/v1/accounts/{$this->account_id}/apiKeys";
+        // $payload = ["apiKey" => ["displayName" => "moodle-user-{$user_id}"]];
         
         // HTTP request
         // $response = $this->make_api_request($url, $payload);
