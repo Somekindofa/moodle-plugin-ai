@@ -13,111 +13,6 @@ class credential_service {
         }
         $this->account_id = $account_id;
     }
-    
-    public function generate_user_api_key($user_id) {
-        // $url = "https://api.fireworks.ai/v1/accounts/{$this->account_id}/apiKeys";
-        // $payload = ["apiKey" => ["displayName" => "moodle-user-{$user_id}"]];
-        
-        // HTTP request
-        // $response = $this->make_api_request($url, $payload);
-        $response = $this->make_api_request($user_id);
-
-        // Store in database
-        $this->store_user_api_key($user_id, $response);
-        
-        // Return the key
-        return $response['key'];
-    }
-
-    private function make_api_request($user_id) {
-        $api_token = get_config('block_aiassistant', 'fireworks_api_token');
-        $firectl_path = '/usr/local/bin/firectl';
-        putenv("HOME=/tmp");
-        putenv("FIREWORKS_API_KEY={$api_token}");
-        
-        $create_account_cmd = "HOME=/tmp {$firectl_path} create user --user-id \"{$service_account_id}\" --service-account";
-        $account_result = shell_exec($create_account_cmd . ' 2>&1');
-
-        if (strpos($account_result, 'error') !== false && strpos($account_result, 'already exists') === false) {
-            throw new \Exception("Failed to create service account: " . $account_result);
-        }
-
-        // Create API key for the service account
-        $create_key_cmd = "HOME=/tmp {$firectl_path} create api-key --service-account \"{$service_account_id}\"";
-        $key_result = shell_exec($create_key_cmd . ' 2>&1');
-        
-        if (strpos($key_result, 'error') !== false) {
-            throw new \Exception("Failed to create API key: " . $key_result);
-        }
-
-        $curl = curl_init();
-
-        curl_setopt_array($curl, [
-            CURLOPT_URL => $url,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_ENCODING => "",
-            CURLOPT_MAXREDIRS => 10,
-            CURLOPT_TIMEOUT => 30,
-            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_CUSTOMREQUEST => "POST",
-            CURLOPT_POSTFIELDS => json_encode($payload),
-            CURLOPT_HTTPHEADER => [
-                "Authorization: Bearer {$api_token}",
-                "Content-Type: application/json"
-            ],
-        ]);
-
-        $response = curl_exec($curl);
-        $http_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-        $err = curl_error($curl);
-
-        curl_close($curl);
-
-        if ($err) {
-            throw new \Exception("cURL Error: " . $err);
-        }
-
-        if ($http_code !== 200) {
-            throw new \Exception("API request failed with HTTP code {$http_code}: " . $response);
-        }
-
-        $decoded_response = json_decode($response, true);
-
-        if (isset($decoded_response['code']) && $decoded_response['code'] !== 0) {
-            throw new \Exception("Fireworks API error (code {$decoded_response['code']}): " . 
-                                ($decoded_response['message'] ?? 'Unknown error'));
-        }
-
-        if (!isset($decoded_response['key']) || !isset($decoded_response['keyId'])) {
-            throw new \Exception("Invalid API response: missing required fields");
-        }
-
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            throw new \Exception("Invalid JSON response: " . json_last_error_msg());
-        }
-
-        return $decoded_response;
-    }
-
-    public function store_user_api_key($user_id, $fireworks_response) {
-        global $DB;
-        
-        try {
-            $record = new \stdClass();
-            $record->userid = $user_id;
-            $record->fireworks_key_id = $fireworks_response['keyId'];
-            $record->fireworks_api_key = $fireworks_response['key'];
-            $record->display_name = $fireworks_response['displayName'];
-            $record->created_time = time();
-            $record->last_used = null; // Not used yet
-            $record->is_active = 1;
-            return $DB->insert_record('block_aiassistant_keys', $record);
-        } catch (\Exception $e) {
-            error_log('Database error: ' . $e->getMessage());
-            throw $e;
-        }
-        
-    }
 
     public function get_user_credentials($user_id) {
         global $DB;
@@ -146,4 +41,53 @@ class credential_service {
         ];
     }
 
+    public function generate_user_api_key($user_id) {
+        $response = $this->create_api_key_for_user($user_id);
+        $this->store_user_api_key($user_id, $response);
+        return $response['key'];
+    }
+    
+    private function create_api_key_for_user($user_id) {
+        $firectl_path = '/usr/local/bin/firectl';
+        $api_token = get_config('block_aiassistant', 'fireworks_api_token');
+        $service_account_id = get_config('block_aiassistant', 'fireworks_account_id');
+        
+        // Create API key under your existing service account
+        $create_key_cmd = "HOME=/tmp FIREWORKS_API_KEY={$api_token} {$firectl_path} create api-key --service-account \"{$service_account_id}\"";
+        $key_result = shell_exec($create_key_cmd . ' 2>&1');
+        
+        error_log("API key creation output: " . $key_result);
+        
+        if (strpos($key_result, 'error') !== false) {
+            throw new \Exception("Failed to create API key: " . $key_result);
+        }
+        
+        $api_key = trim($key_result);
+        
+        return [
+            'key' => $api_key,
+            'keyId' => "user-{$user_id}-key",
+            'displayName' => "moodle-user-{$user_id}"
+        ];
+    }
+
+    public function store_user_api_key($user_id, $fireworks_response) {
+        global $DB;
+        
+        try {
+            $record = new \stdClass();
+            $record->userid = $user_id;
+            $record->fireworks_key_id = $fireworks_response['keyId'];
+            $record->fireworks_api_key = $fireworks_response['key'];
+            $record->display_name = $fireworks_response['displayName'];
+            $record->created_time = time();
+            $record->last_used = null; // Not used yet
+            $record->is_active = 1;
+            return $DB->insert_record('block_aiassistant_keys', $record);
+        } catch (\Exception $e) {
+            error_log('Database error: ' . $e->getMessage());
+            throw $e;
+        }
+        
+    }
 }
