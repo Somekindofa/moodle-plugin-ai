@@ -70,21 +70,21 @@ class get_user_credentials extends external_api {
 
             // No existing key, create new one
             $fireworks_account_id = get_config('block_aiassistant', 'fireworks_account_id');
-            
+            $fireworks_service_account_id = get_config('block_aiassistant', 'fireworks_service_account_id');
             // Debug: Check if config value exists
-            debugging('Fireworks Account ID retrieved: ' . var_export($fireworks_account_id, true), DEBUG_DEVELOPER);
             error_log('DEBUG: Fireworks Account ID: ' . var_export($fireworks_account_id, true));
+            error_log('DEBUG: Fireworks Service Account ID: ' . var_export($fireworks_service_account_id, true));
             
-            if (empty($fireworks_account_id)) {
+            if (empty($fireworks_account_id) || empty($fireworks_service_account_id)) {
                 return [
                     'success' => false,
                     'api_key' => '',
                     'display_name' => '',
-                    'message' => 'Fireworks Account ID not configured. Please check plugin settings.'
+                    'message' => 'Fireworks Account/Service Account ID not configured. Please check plugin settings.'
                 ];
             }
             
-            $credential_service = new \block_aiassistant\credential_service($fireworks_account_id);
+            $credential_service = new \block_aiassistant\credential_service($fireworks_account_id, $fireworks_service_account_id);
             $api_key = $credential_service->generate_user_api_key($USER->id);
 
             return [
