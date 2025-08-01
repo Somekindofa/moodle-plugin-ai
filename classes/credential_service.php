@@ -5,40 +5,14 @@ namespace block_aiassistant;
 defined('MOODLE_INTERNAL') || die();
 
 class credential_service {
-    private $account_id;
+    private $account_id, $service_account_id;
     
-    public function __construct($account_id) {
-        if (empty($account_id)) {
-            throw new \Exception('Fireworks account ID not configured');
+    public function __construct($account_id, $service_account_id) {
+        if (empty($account_id) || empty($service_account_id)) {
+            throw new \Exception('Please enter your Fireworks.ai credentials first.');
         }
         $this->account_id = $account_id;
-    }
-
-    public function get_user_credentials($user_id) {
-        global $DB;
-        
-        // Check if user already has an active API key
-        $existing_key = $DB->get_record('block_aiassistant_keys', [
-            'userid' => $user_id,
-            'is_active' => 1
-        ]);
-
-        if ($existing_key) {
-            return [
-                'api_key' => $existing_key->fireworks_api_key,
-                'display_name' => $existing_key->display_name,
-                'exists' => true
-            ];
-        }
-
-        // No existing key, create new one
-        $api_key = $this->generate_user_api_key($user_id);
-        
-        return [
-            'api_key' => $api_key,
-            'display_name' => "moodle-user-{$user_id}",
-            'exists' => false
-        ];
+        $this->service_account_id = $service_account_id;
     }
 
     public function generate_user_api_key($user_id) {
@@ -50,18 +24,17 @@ class credential_service {
     private function create_api_key_for_user($user_id) {
         $firectl_path = '/usr/local/bin/firectl';
         $api_token = get_config('block_aiassistant', 'fireworks_api_token');
-        $service_account_id = get_config('block_aiassistant', 'fireworks_account_id');
         
         // Create API key under your existing service account
-        $signin_cmd = '{$firectl_path} signin "dupontg99-27dbce"'
+        $signin_cmd = "HOME=/tmp {$firectl_path} signin \"{$this->account_id}\"";
         $signin_result = shell_exec($signin_cmd . ' 2>&1');
 
         error_log("firectl sign in output: " . $signin_result);
         if (strpos($signin_result, 'error') !== false) {
-            throw new \Exception("Failed to create API key: " . $signin_result);
+            throw new \Exception("Failed to signin: " . $signin_result);
         }
 
-        $create_key_cmd = "HOME=/tmp {$firectl_path} create api-key --service-account {$service_account_id}";
+        $create_key_cmd = "HOME=/tmp {$firectl_path} create api-key --service-account {$this->service_account_id}";
         $key_result = shell_exec($create_key_cmd . ' 2>&1');
         
         error_log("API key creation output: " . $key_result);
