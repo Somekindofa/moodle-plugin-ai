@@ -22,27 +22,36 @@ class credential_service {
     }
     
     private function create_api_key_for_user($user_id) {
+        error_log("DEBUG: Starting create_api_key_for_user for user " . $user_id);
+
         $firectl_path = '/usr/local/bin/firectl';
         $api_token = get_config('block_aiassistant', 'fireworks_api_token');
         
-        // Create API key under your existing service account
-        $signin_cmd = "HOME=/tmp {$firectl_path} signin \"{$this->account_id}\"";
-        $signin_result = shell_exec($signin_cmd . ' 2>&1');
+        error_log("DEBUG: API token configured: " . (empty($api_token) ? 'NO' : 'YES'));
 
-        error_log("firectl sign in output: " . $signin_result);
-        if (strpos($signin_result, 'error') !== false) {
+        // Create API key under your existing service account
+        $signin_cmd = "timeout 30 sh -c 'HOME=/tmp {$firectl_path} signin \"{$this->account_id}\"'";
+        error_log("DEBUG: Running signin command: " . $signin_cmd);
+
+        $signin_result = shell_exec($signin_cmd . ' 2>&1');
+        error_log("DEBUG: Signin result: " . var_export($signin_result, true));
+
+        if (strpos($signin_result, 'error') !== false || strpos($signin_result, 'Failed') !== false) {
             throw new \Exception("Failed to signin: " . $signin_result);
         }
 
-        $create_key_cmd = "HOME=/tmp {$firectl_path} create api-key --service-account {$this->service_account_id}";
-        $key_result = shell_exec($create_key_cmd . ' 2>&1');
+        $create_key_cmd = "timeout 30 sh -c 'HOME=/tmp {$firectl_path} create api-key --service-account {$this->service_account_id}'";
+        error_log("DEBUG: Running create key command: " . $create_key_cmd);
         
-        error_log("API key creation output: " . $key_result);
-        if (strpos($key_result, 'error') !== false) {
+        $key_result = shell_exec($create_key_cmd . ' 2>&1');
+        error_log("DEBUG: Create key result: " . var_export($key_result, true));
+        
+        if (strpos($key_result, 'error') !== false || strpos($key_result, 'Failed') !== false) {
             throw new \Exception("Failed to create API key: " . $key_result);
         }
         
         $api_key = trim($key_result);
+        error_log("DEBUG: Extracted API key length: " . strlen($api_key));
         
         return [
             'key' => $api_key,
