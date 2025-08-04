@@ -174,23 +174,39 @@ class block_aiassistant extends block_base {
                         const options = {
                             method: 'POST',
                             headers: {
-                                Authorization: 'Bearer ${apiKey}',
+                                Authorization: 'Bearer fw_3ZHpzWpsvNQMVRgf772VmtHs',
                                 'Content-Type': 'application/json'
                             },
-                            body: '{\"max_tokens\":2000,\"prompt_truncate_len\":1500,\"temperature\":1,\"top_p\":1,\"frequency_penalty\":0,\"perf_metrics_in_response\":false,\"presence_penalty\":0,\"repetition_penalty\":1,\"mirostat_lr\":0.1,\"mirostat_target\":1.5,\"n\":1,\"ignore_eos\":false,\"response_format\":{\"type\":\"text\"},\"stream\":true}'
-                            };
+                            body: '{\"max_tokens\":2000,\"prompt_truncate_len\":1500,\"temperature\":1,\"top_p\":1,\"frequency_penalty\":0,\"perf_metrics_in_response\":false,\"presence_penalty\":0,\"repetition_penalty\":1,\"mirostat_lr\":0.1,\"mirostat_target\":1.5,\"n\":1,\"ignore_eos\":false,\"response_format\":{\"type\":\"text\"},\"stream\":false,\"messages\":[{\"role\":\"user\",\"content\":\"Hello there!\"}],\"model\":\"accounts/fireworks/models/qwen3-235b-a22b-thinking-2507\"}'
+                        };
 
                         try {
                             const response = await fetch(url, options);
                             const data = await response.json();
                             console.log(data);
+                            
+                            if (data.choices && data.choices[0] && data.choices[0].message) {
+                                let content = data.choices[0].message.content;
+                                
+                                // Extract content after thinking tags if they exist (flexible for different tag formats)
+                                const thinkPatterns = ['</think>', '</thinking>'];
+                                for (const pattern of thinkPatterns) {
+                                    const endIndex = content.indexOf(pattern);
+                                    if (endIndex !== -1) {
+                                        content = content.substring(endIndex + pattern.length).trim();
+                                        break;
+                                    }
+                                }
+                                
+                                responseSpan.textContent = content;
+                            } else {
+                                responseSpan.textContent = 'Sorry, I could not process your request.';
+                            }
                         } catch (error) {
                             console.error(error);
+                            responseSpan.textContent = 'Sorry, there was an error processing your request.';
                         }
-
-
-                                                
-                        
+                            
                         // Scroll to bottom
                         messagesContainer.scrollTop = messagesContainer.scrollHeight;
                     }, 1000);
