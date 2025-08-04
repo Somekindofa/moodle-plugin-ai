@@ -2,12 +2,41 @@ define(['core/ajax'], function(Ajax) {
     'use strict';
 
     function init() {
+        // Wait for DOM to be ready
+        document.addEventListener('DOMContentLoaded', function() {
+            initChat();
+        });
+        
+        // Also try immediately in case DOM is already ready
+        if (document.readyState === 'loading') {
+            // DOM hasn't finished loading yet
+            document.addEventListener('DOMContentLoaded', initChat);
+        } else {
+            // DOM has already loaded
+            initChat();
+        }
+    }
+    
+    function initChat() {
         const sendButton = document.getElementById("ai-chat-send");
         const chatInput = document.getElementById("ai-chat-input");
         const messagesContainer = document.getElementById("ai-chat-messages");
         
+        // Debug: Check if elements exist
+        console.log("Send button:", sendButton);
+        console.log("Chat input:", chatInput);
+        console.log("Messages container:", messagesContainer);
+        
+        // Exit if elements don't exist
+        if (!sendButton || !chatInput || !messagesContainer) {
+            console.error("Chat elements not found!");
+            return;
+        }
+        
         function sendMessage() {
             const message = chatInput.value.trim();
+            console.log("Sending message:", message);
+            
             if (!message) return;
             
             // Add user message
@@ -25,6 +54,9 @@ define(['core/ajax'], function(Ajax) {
             loadingDiv.innerHTML = "<strong>AI Assistant:</strong> <em>Getting your credentials...</em>";
             messagesContainer.appendChild(loadingDiv);
             
+            // Scroll to bottom
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
             // Get user credentials via AJAX
             Ajax.call([{
                 methodname: 'block_aiassistant_get_user_credentials',
@@ -40,6 +72,8 @@ define(['core/ajax'], function(Ajax) {
                         errorDiv.innerHTML = "<strong>AI Assistant:</strong> <em>Error: " + credentials.message + "</em>";
                         messagesContainer.appendChild(errorDiv);
                     }
+                    
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
                 },
                 fail: function(error) {
                     messagesContainer.removeChild(loadingDiv);
@@ -48,10 +82,10 @@ define(['core/ajax'], function(Ajax) {
                     errorDiv.className = "ai-message";
                     errorDiv.innerHTML = "<strong>AI Assistant:</strong> <em>Failed to get credentials: " + error.message + "</em>";
                     messagesContainer.appendChild(errorDiv);
+                    
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
                 }
             }]);
-            
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
         
         function sendChatMessage(message, apiKey) {
@@ -65,14 +99,22 @@ define(['core/ajax'], function(Ajax) {
             }, 1000);
         }
         
-        sendButton.addEventListener("click", sendMessage);
+        // Add event listeners
+        sendButton.addEventListener("click", function(e) {
+            console.log("Send button clicked!");
+            e.preventDefault();
+            sendMessage();
+        });
         
         chatInput.addEventListener("keypress", function(e) {
             if (e.key === "Enter" && !e.shiftKey) {
+                console.log("Enter pressed!");
                 e.preventDefault();
                 sendMessage();
             }
         });
+        
+        console.log("Chat initialized successfully!");
     }
 
     return {
