@@ -25,22 +25,8 @@ class credential_service {
         error_log("DEBUG: Starting create_api_key_for_user for user " . $user_id);
 
         $firectl_path = '/usr/local/bin/firectl';
-        $api_token = get_config('block_aiassistant', 'fireworks_api_token');
-        
-        error_log("DEBUG: API token configured: " . (empty($api_token) ? 'NO' : 'YES'));
 
-        // Create API key under your existing service account
-        $signin_cmd = "timeout 30 sh -c 'HOME=/tmp {$firectl_path} signin \"{$this->account_id}\"'";
-        error_log("DEBUG: Running signin command: " . $signin_cmd);
-
-        $signin_result = shell_exec($signin_cmd . ' 2>&1');
-        error_log("DEBUG: Signin result: " . var_export($signin_result, true));
-
-        if (strpos($signin_result, 'error') !== false || strpos($signin_result, 'Failed') !== false) {
-            throw new \Exception("Failed to signin: " . $signin_result);
-        }
-
-        $create_key_cmd = "timeout 30 sh -c 'HOME=/tmp {$firectl_path} create api-key --service-account {$this->service_account_id}'";
+        $create_key_cmd = "HOME=/tmp {$firectl_path} create api-key --key-name='moodle-user-{$user_id}' --service-account={$this->service_account_id}";
         error_log("DEBUG: Running create key command: " . $create_key_cmd);
         
         $key_result = shell_exec($create_key_cmd . ' 2>&1');
@@ -50,14 +36,39 @@ class credential_service {
             throw new \Exception("Failed to create API key: " . $key_result);
         }
         
-        $api_key = trim($key_result);
-        error_log("DEBUG: Extracted API key length: " . strlen($api_key));
+        // Parse the output to extract individual values
+        $parsed_data = $this->parse_firectl_output($key_result);
+        error_log("DEBUG: Parsed API key length: " . strlen($parsed_data['key']));
         
-        return [
-            'key' => $api_key,
-            'keyId' => "user-{$user_id}-key",
-            'displayName' => "moodle-user-{$user_id}"
+        return $parsed_data;
+    }
+
+    private function parse_firectl_output($output) {
+        $lines = explode("\n", trim($output));
+        $result = [
+            'key' => '',
+            'keyId' => '',
+            'displayName' => ''
         ];
+        
+        foreach ($lines as $line) {
+            $line = trim($line);
+            
+            if (strpos($line, 'Key Id:') === 0) {
+                $result['keyId'] = trim(str_replace('Key Id:', '', $line));
+            } elseif (strpos($line, 'Display Name:') === 0) {
+                $result['displayName'] = trim(str_replace('Display Name:', '', $line));
+            } elseif (strpos($line, 'Key:') === 0) {
+                $result['key'] = trim(str_replace('Key:', '', $line));
+            }
+        }
+        
+        // Validate we got all required fields
+        if (empty($result['key']) || empty($result['keyId'])) {
+            throw new \Exception("Failed to parse firectl output: " . $output);
+        }
+        
+        return $result;
     }
 
     public function store_user_api_key($user_id, $fireworks_response) {
