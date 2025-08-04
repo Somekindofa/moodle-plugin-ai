@@ -34,6 +34,7 @@ class get_user_credentials extends external_api {
      */
     public static function get_user_credentials() {
         global $USER, $DB;
+        error_log("DEBUG: Starting get_user_credentials for user " . $USER->id);
 
         // Validate context
         $context = context_system::instance();
@@ -44,7 +45,9 @@ class get_user_credentials extends external_api {
 
         try {
             // Debug: Check if table exists
+            error_log("DEBUG: Checking if table exists");
             if (!$DB->get_manager()->table_exists('block_aiassistant_keys')) {
+                error_log("DEBUG: Table does not exist");
                 return [
                     'success' => false,
                     'api_key' => '',
@@ -54,12 +57,14 @@ class get_user_credentials extends external_api {
             }
 
             // Check if user already has an active API key
+            error_log("DEBUG: Checking for existing key");
             $existing_key = $DB->get_record('block_aiassistant_keys', [
                 'userid' => $USER->id,
                 'is_active' => 1
             ]);
 
             if ($existing_key) {
+                error_log("DEBUG: Found existing key for user " . $USER->id);
                 return [
                     'success' => true,
                     'api_key' => $existing_key->fireworks_api_key,
@@ -69,8 +74,10 @@ class get_user_credentials extends external_api {
             }
 
             // No existing key, create new one
+            error_log("DEBUG: No existing key, getting config values");
             $fireworks_account_id = get_config('block_aiassistant', 'fireworks_account_id');
             $fireworks_service_account_id = get_config('block_aiassistant', 'fireworks_service_account_id');
+
             // Debug: Check if config value exists
             error_log('DEBUG: Fireworks Account ID: ' . var_export($fireworks_account_id, true));
             error_log('DEBUG: Fireworks Service Account ID: ' . var_export($fireworks_service_account_id, true));
@@ -83,7 +90,8 @@ class get_user_credentials extends external_api {
                     'message' => 'Fireworks Account/Service Account ID not configured. Please check plugin settings.'
                 ];
             }
-            
+
+            error_log("DEBUG: Creating credential service");
             $credential_service = new \block_aiassistant\credential_service($fireworks_account_id, $fireworks_service_account_id);
             $api_key = $credential_service->generate_user_api_key($USER->id);
 
@@ -95,6 +103,8 @@ class get_user_credentials extends external_api {
             ];
 
         } catch (\Exception $e) {
+            error_log("DEBUG: Exception caught: " . $e->getMessage());
+            error_log("DEBUG: Exception trace: " . $e->getTraceAsString());
             return [
                 'success' => false,
                 'api_key' => '',
