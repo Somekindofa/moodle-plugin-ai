@@ -3,6 +3,7 @@
     border: 1px solid #ddd;
     border-radius: 8px;
     overflow: hidden;
+    margin-bottom: 10px;
 }
 
 .ai-chat-messages {
@@ -17,6 +18,7 @@
     margin-bottom: 10px;
     padding: 8px;
     border-radius: 4px;
+    word-wrap: break-word;
 }
 
 .ai-message {
@@ -40,6 +42,7 @@
     border-radius: 4px;
     padding: 8px;
     resize: vertical;
+    font-family: inherit;
 }
 
 .ai-chat-input button {
@@ -49,8 +52,14 @@
     border: none;
     border-radius: 4px;
     cursor: pointer;
+    transition: background-color 0.2s;
 }
 
 .ai-chat-input button:hover {
     background: #005a87;
+}
+
+.ai-chat-input button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
 }

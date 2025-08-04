@@ -29,58 +29,50 @@ class block_aiassistant extends block_base {
     
     private function get_chat_interface() {
         global $PAGE;
-        // Include CSS
-        $PAGE->requires->css('/blocks/aiassistant/styles.css');
         
-        // Include JavaScript
-        $PAGE->requires->js_call_amd('block_aiassistant/chat', 'init');
+        // Generate a unique ID for this block instance
+        $unique_id = 'aiassistant_' . uniqid();
         
-        return '
-            <div class="ai-chat-container">
-                <div class="ai-chat-messages" id="ai-chat-messages">
-                    <div class="ai-message">
-                        <strong>AI Assistant:</strong> Hello! How can I help you today?
-                    </div>
-                </div>
-                <div class="ai-chat-input">
-                    <textarea id="ai-chat-input" placeholder="Type your message here..." rows="3"></textarea>
-                    <button id="ai-chat-send" type="button">Send</button>
-                </div>
-            </div>';
-            
+        // Include CSS (keep this as external file for easier editing)
+        $PAGE->requires->css('/blocks/aiassistant/assets/chat.css');
+        
+        // Call the JavaScript module and pass the unique ID
+        $PAGE->requires->js_call_amd('block_aiassistant/chat', 'init', [$unique_id]);
+        
+        // Load just the HTML template
+        $html_template = $this->load_file('assets/chat.html');
+        
+        // Replace placeholders in the template
+        $html = str_replace('{UNIQUE_ID}', $unique_id, $html_template);
+        
         return $html;
     }
     
     /**
+     * Load content from a file within the block directory
+     */
+    private function load_file($relative_path) {
+        global $CFG;
+        
+        $file_path = $CFG->dirroot . '/blocks/aiassistant/' . $relative_path;
+        
+        if (file_exists($file_path)) {
+            return file_get_contents($file_path);
+        } else {
+            error_log("AI Assistant: Could not load file: {$file_path}");
+            return "<!-- File not found: {$relative_path} -->";
+        }
+    }
+    
+    /**
      * Defines the page formats where this block can be displayed.
-     *
-     * Available formats include:
-     * - 'all' => true: Display on all page types
-     * - 'site' => true: Site front page
-     * - 'course' => true: Course pages
-     * - 'course-category' => true: Course category pages
-     * - 'my' => true: Dashboard/My Moodle page
-     * - 'user' => true: User profile pages
-     * - 'mod' => true: Activity/module pages
-     * - 'tag' => true: Tag pages
-     * - 'admin' => true: Admin pages
-     * - 'blog' => true: Blog pages
-     * - 'calendar' => true: Calendar pages
-     *
-     * @return array Array of applicable formats with boolean values
      */
     public function applicable_formats() {
-        return array('all' => true); # if we only want it to be shown on page types "course" and "dashboard" then use: return array('course' => true, 'my' => true);
+        return array('all' => true);
     }
     
     /**
      * Determines whether multiple instances of this block can exist on a single page.
-     *
-     * This method controls the block instance multiplicity behavior. When returning false,
-     * only one instance of this block type can be added to any given page, preventing
-     * duplicate block placements.
-     *
-     * @return bool False to allow only one instance per page, true to allow multiple instances
      */
     public function instance_allow_multiple() {
         return false;
