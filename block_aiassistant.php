@@ -30,7 +30,7 @@ class block_aiassistant extends block_base {
     private function get_chat_interface() {
         global $USER, $COURSE;
         $html = "
-        <div class=\"ai-chat-container\">
+        <div class=\"ai-chat-container\" id=\"ai-chat-container\">
             <div class=\"ai-chat-messages\" id=\"ai-chat-messages\">
                 <div class=\"ai-message\">
                     <strong>AI Assistant:</strong> Hello! How can I help you today?
@@ -40,22 +40,50 @@ class block_aiassistant extends block_base {
                 <textarea id=\"ai-chat-input\" placeholder=\"Type your message here...\" rows=\"3\"></textarea>
                 <button id=\"ai-chat-send\" type=\"button\">Send</button>
             </div>
+            <div class=\"ai-resize-handle\" id=\"ai-resize-handle\" title=\"Drag to resize\"></div>
         </div>
         
         <style>
         .ai-chat-container {
-            max-width: 100%;
+            position: relative;
+            width: 400px;
+            min-width: 300px;
+            max-width: 800px;
             border: 1px solid #ddd;
             border-radius: 8px;
             overflow: hidden;
+            margin: 0 auto;
         }
         
         .ai-chat-messages {
             height: 200px;
+            min-height: 150px;
+            max-height: 600px;
             overflow-y: auto;
             padding: 10px;
             background: #f9f9f9;
             border-bottom: 1px solid #ddd;
+        }
+        
+        .ai-resize-handle {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 20px;
+            height: 20px;
+            cursor: se-resize;
+            background: linear-gradient(135deg, transparent 0%, transparent 30%, #999 30%, #999 40%, transparent 40%, transparent 50%, #999 50%, #999 60%, transparent 60%, transparent 70%, #999 70%, #999 80%, transparent 80%);
+            border-top-left-radius: 4px;
+            opacity: 0.7;
+            transition: opacity 0.2s ease;
+        }
+        
+        .ai-resize-handle:hover {
+            opacity: 1;
+        }
+        
+        .ai-chat-container.resizing {
+            user-select: none;
         }
         
         .ai-message, .user-message {
@@ -108,6 +136,56 @@ class block_aiassistant extends block_base {
                 const sendButton = document.getElementById(\"ai-chat-send\");
                 const chatInput = document.getElementById(\"ai-chat-input\");
                 const messagesContainer = document.getElementById(\"ai-chat-messages\");
+                const chatContainer = document.getElementById(\"ai-chat-container\");
+                const resizeHandle = document.getElementById(\"ai-resize-handle\");
+                
+                // Load saved dimensions from localStorage
+                const savedWidth = localStorage.getItem('ai-chat-width');
+                const savedHeight = localStorage.getItem('ai-chat-height');
+                
+                if (savedWidth) {
+                    chatContainer.style.width = savedWidth + 'px';
+                }
+                if (savedHeight) {
+                    messagesContainer.style.height = savedHeight + 'px';
+                }
+                
+                // Resize functionality
+                let isResizing = false;
+                let startX, startY, startWidth, startHeight;
+                
+                resizeHandle.addEventListener('mousedown', function(e) {
+                    isResizing = true;
+                    chatContainer.classList.add('resizing');
+                    
+                    startX = e.clientX;
+                    startY = e.clientY;
+                    startWidth = parseInt(window.getComputedStyle(chatContainer).width, 10);
+                    startHeight = parseInt(window.getComputedStyle(messagesContainer).height, 10);
+                    
+                    e.preventDefault();
+                });
+                
+                document.addEventListener('mousemove', function(e) {
+                    if (!isResizing) return;
+                    
+                    const newWidth = Math.max(300, Math.min(800, startWidth + (e.clientX - startX)));
+                    const newHeight = Math.max(150, Math.min(600, startHeight + (e.clientY - startY)));
+                    
+                    chatContainer.style.width = newWidth + 'px';
+                    messagesContainer.style.height = newHeight + 'px';
+                    
+                    // Save to localStorage
+                    localStorage.setItem('ai-chat-width', newWidth);
+                    localStorage.setItem('ai-chat-height', newHeight);
+                });
+                
+                document.addEventListener('mouseup', function() {
+                    if (isResizing) {
+                        isResizing = false;
+                        chatContainer.classList.remove('resizing');
+                    }
+                });
                 
                 function sendMessage() {
                     const message = chatInput.value.trim();
