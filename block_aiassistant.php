@@ -30,6 +30,7 @@ class block_aiassistant extends block_base {
     private function get_chat_interface() {
         global $USER, $COURSE;
         $html = "
+        <script src=\"https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.js\"></script>
         <div class=\"ai-chat-container\">
             <div class=\"ai-chat-messages\" id=\"ai-chat-messages\">
                 <div class=\"ai-message\">
@@ -64,6 +65,57 @@ class block_aiassistant extends block_base {
             border-radius: 4px;
         }
         
+        .ai-message .response-text h1, .ai-message .response-text h2, .ai-message .response-text h3 {
+            margin: 0.5em 0;
+            font-weight: bold;
+        }
+        .ai-message .response-text h1 { font-size: 1.2em; }
+        .ai-message .response-text h2 { font-size: 1.1em; }
+        .ai-message .response-text h3 { font-size: 1.05em; }
+        .ai-message .response-text p {
+            margin: 0.5em 0;
+        }
+    
+        .ai-message .response-text code {
+            background: #f0f0f0;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+        
+        .ai-message .response-text pre {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 0.5em 0;
+        }
+        
+        .ai-message .response-text pre code {
+            background: none;
+            padding: 0;
+        }
+        
+        .ai-message .response-text ul, .ai-message .response-text ol {
+            margin: 0.5em 0;
+            padding-left: 20px;
+        }
+        
+        .ai-message .response-text blockquote {
+            border-left: 3px solid #ddd;
+            margin: 0.5em 0;
+            padding-left: 10px;
+            color: #666;
+        }
+        
+        .ai-message .response-text strong {
+            font-weight: bold;
+        }
+        
+        .ai-message .response-text em {
+            font-style: italic;
+        }
         .ai-message {
             background: #e3f2fd;
         }
@@ -174,10 +226,27 @@ class block_aiassistant extends block_base {
                         const options = {
                             method: 'POST',
                             headers: {
-                                Authorization: 'Bearer fw_3ZHpzWpsvNQMVRgf772VmtHs',
+                                Authorization: 'Bearer ' + apiKey,
                                 'Content-Type': 'application/json'
                             },
-                            body: '{\"max_tokens\":2000,\"prompt_truncate_len\":1500,\"temperature\":1,\"top_p\":1,\"frequency_penalty\":0,\"perf_metrics_in_response\":false,\"presence_penalty\":0,\"repetition_penalty\":1,\"mirostat_lr\":0.1,\"mirostat_target\":1.5,\"n\":1,\"ignore_eos\":false,\"response_format\":{\"type\":\"text\"},\"stream\":false,\"messages\":[{\"role\":\"user\",\"content\":\"Hello there!\"}],\"model\":\"accounts/fireworks/models/qwen3-235b-a22b-thinking-2507\"}'
+                            body: JSON.stringify({
+                                \"max_tokens\": 2000,
+                                \"prompt_truncate_len\": 1500,
+                                \"temperature\": 1,
+                                \"top_p\": 1,
+                                \"frequency_penalty\": 0,
+                                \"perf_metrics_in_response\": false,
+                                \"presence_penalty\": 0,
+                                \"repetition_penalty\": 1,
+                                \"mirostat_lr\": 0.1,
+                                \"mirostat_target\": 1.5,
+                                \"n\": 1,
+                                \"ignore_eos\": false,
+                                \"response_format\": {\"type\": \"text\"},
+                                \"stream\": false,
+                                \"messages\": [{\"role\": \"user\", \"content\": message}],
+                                \"model\": \"accounts/fireworks/models/qwen3-235b-a22b-thinking-2507\"
+                            })
                         };
 
                         try {
@@ -197,8 +266,9 @@ class block_aiassistant extends block_base {
                                         break;
                                     }
                                 }
-                                
-                                responseSpan.textContent = content;
+                                // Convert markdown to HTML
+                                const htmlContent = marked.parse(content);
+                                responseSpan.innerHTML = htmlContent;
                             } else {
                                 responseSpan.textContent = 'Sorry, I could not process your request.';
                             }
