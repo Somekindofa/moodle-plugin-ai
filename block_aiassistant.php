@@ -27,10 +27,10 @@ class block_aiassistant extends block_base {
         return $this->content;
     }
     
-    private function get_chat_interface() {
-        global $USER, $COURSE, $PAGE;
+    public function get_chat_interface() {
+        global $CFG, $PAGE;
         $PAGE->requires->js_call_amd('block_aiassistant/chat_interface', 'init');
-
+        
         $html = "
         <script src=\"https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.js\"></script>
         <div class=\"ai-chat-container\" id=\"ai-chat-container\">
