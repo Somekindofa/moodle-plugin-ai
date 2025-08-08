@@ -27,7 +27,7 @@ class block_aiassistant extends block_base {
         return $this->content;
     }
     
-    public function get_chat_interface() {
+    private function get_chat_interface() {
         global $CFG, $PAGE;
         $PAGE->requires->js_call_amd('block_aiassistant/chat_interface', 'init');
         
