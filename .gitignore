@@ -26,6 +26,7 @@ next-env.d.ts
 # html
 *.html
 
-# tests
+# tests - Complete test folder exclusion
+tests/
 test*
 test/*
