@@ -370,7 +370,7 @@ export const init = () => {
         }
 
         /**
-         * Send chat message to Fireworks API (Direct API approach)
+         * Send chat message to Fireworks API with streaming support
          * @param {string} message - The message to send
          * @param {string} apiKey - The master API key for authentication
          */
@@ -378,7 +378,7 @@ export const init = () => {
             setTimeout(async function() {
                 const aiMessageDiv = document.createElement("div");
                 aiMessageDiv.className = "ai-message";
-                aiMessageDiv.innerHTML = "<strong>AI Assistant (Fireworks):</strong> <span class='response-text'>Thinking...</span>";
+                aiMessageDiv.innerHTML = "<strong>AI Assistant (Fireworks):</strong> <span class='response-text'></span>";
                 messagesContainer.appendChild(aiMessageDiv);
                 const responseSpan = aiMessageDiv.querySelector('.response-text');
                 
@@ -411,45 +411,77 @@ export const init = () => {
                         "n": 1,
                         "ignore_eos": false,
                         "response_format": null,
-                        "stream": false,
+                        "stream": true,
                         "context_length_exceeded_behavior": "truncate"
                     })
                 };
                 
                 try {
                     const response = await fetch(url, options);
-                    const data = await response.json();
-                    console.log('Fireworks API response:', data);
                     
-                    if (data.choices && data.choices[0] && data.choices[0].message) {
-                        let content = data.choices[0].message.content;
-                        
-                        // Convert markdown to HTML if marked is available
-                        if (typeof marked !== 'undefined' && marked.parse) {
-                            const htmlContent = marked.parse(content);
-                            responseSpan.innerHTML = htmlContent;
-                        } else {
-                            responseSpan.textContent = content;
-                        }
-                    } else if (data.error) {
-                        responseSpan.textContent = 'Error: ' + (data.error.message || data.error);
-                        console.error('Fireworks API error:', data.error);
-                    } else {
-                        responseSpan.textContent = 'Sorry, I could not process your request. No response from Fireworks API.';
-                        console.error('Unexpected Fireworks API response:', data);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
                     }
+                    
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let responseContent = '';
+                    
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        
+                        if (done) {
+                            break;
+                        }
+                        
+                        const chunk = decoder.decode(value);
+                        const lines = chunk.split('\n');
+                        
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const data = line.slice(6);
+                                
+                                if (data === '[DONE]') {
+                                    break;
+                                }
+                                
+                                try {
+                                    const parsed = JSON.parse(data);
+                                    
+                                    if (parsed.choices && parsed.choices[0] && parsed.choices[0].delta) {
+                                        const content = parsed.choices[0].delta.content || '';
+                                        responseContent += content;
+                                        
+                                        // Convert markdown to HTML if marked is available
+                                        if (typeof marked !== 'undefined' && marked.parse) {
+                                            const htmlContent = marked.parse(responseContent);
+                                            responseSpan.innerHTML = htmlContent;
+                                        } else {
+                                            responseSpan.textContent = responseContent;
+                                        }
+                                        
+                                        // Scroll to bottom
+                                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                                    }
+                                } catch (parseError) {
+                                    console.log('Non-JSON data chunk:', data);
+                                }
+                            }
+                        }
+                    }
+                    
                 } catch (error) {
                     console.error('Fireworks API call failed:', error);
                     responseSpan.textContent = 'Sorry, there was an error processing your request: ' + error.message;
                 }
 
-                // Scroll to bottom
+                // Final scroll to bottom
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
             }, 1000);
         }
 
         /**
-         * Send chat message to Claude API
+         * Send chat message to Claude API with streaming support
          * @param {string} message - The message to send
          * @param {string} apiKey - The API key for authentication
          */
@@ -457,7 +489,7 @@ export const init = () => {
             setTimeout(async function() {
                 const aiMessageDiv = document.createElement("div");
                 aiMessageDiv.className = "ai-message";
-                aiMessageDiv.innerHTML = `<strong>AI Assistant (Claude):</strong> <span class='response-text'>Thinking...</span>`;
+                aiMessageDiv.innerHTML = `<strong>AI Assistant (Claude):</strong> <span class='response-text'></span>`;
                 messagesContainer.appendChild(aiMessageDiv);
                 const responseSpan = aiMessageDiv.querySelector('.response-text');
                 
@@ -486,35 +518,75 @@ export const init = () => {
                                 role: "user",
                                 content: message
                             }
-                        ]
+                        ],
+                        stream: true
                     })
                 };
                 
                 try {
                     const response = await fetch(url, options);
-                    const data = await response.json();
-                    console.log(data);
                     
-                    if (data.content && data.content[0] && data.content[0].text) {
-                        const content = data.content[0].text;
-                        // Convert markdown to HTML if marked is available
-                        if (typeof marked !== 'undefined' && marked.parse) {
-                            const htmlContent = marked.parse(content);
-                            responseSpan.innerHTML = htmlContent;
-                        } else {
-                            responseSpan.textContent = content;
-                        }
-                    } else if (data.error) {
-                        responseSpan.textContent = 'Error: ' + data.error.message;
-                    } else {
-                        responseSpan.textContent = 'Sorry, I could not process your request.';
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
                     }
+                    
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let responseContent = '';
+                    
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        
+                        if (done) {
+                            break;
+                        }
+                        
+                        const chunk = decoder.decode(value);
+                        const lines = chunk.split('\n');
+                        
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const data = line.slice(6);
+                                
+                                if (data === '[DONE]') {
+                                    break;
+                                }
+                                
+                                try {
+                                    const parsed = JSON.parse(data);
+                                    
+                                    if (parsed.type === 'content_block_delta' && parsed.delta && parsed.delta.text) {
+                                        const content = parsed.delta.text;
+                                        responseContent += content;
+                                        
+                                        // Convert markdown to HTML if marked is available
+                                        if (typeof marked !== 'undefined' && marked.parse) {
+                                            const htmlContent = marked.parse(responseContent);
+                                            responseSpan.innerHTML = htmlContent;
+                                        } else {
+                                            responseSpan.textContent = responseContent;
+                                        }
+                                        
+                                        // Scroll to bottom
+                                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                                    } else if (parsed.type === 'error') {
+                                        console.error('Claude API error:', parsed.error);
+                                        responseSpan.textContent = 'Error: ' + parsed.error.message;
+                                        break;
+                                    }
+                                } catch (parseError) {
+                                    console.log('Non-JSON data chunk:', data);
+                                }
+                            }
+                        }
+                    }
+                    
                 } catch (error) {
-                    console.error(error);
+                    console.error('Claude API call failed:', error);
                     responseSpan.textContent = 'Sorry, there was an error processing your request: ' + error.message;
                 }
 
-                // Scroll to bottom
+                // Final scroll to bottom
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
             }, 1000);
         }
