@@ -8,6 +8,14 @@ class credential_service {
     private $account_id, $service_account_id;
     
     public function __construct($account_id, $service_account_id) {
+        // Allow dummy values for Claude-only usage
+        if ((empty($account_id) || $account_id === 'dummy') && (empty($service_account_id) || $service_account_id === 'dummy')) {
+            error_log('DEBUG: Using dummy Fireworks credentials for Claude-only operation');
+            $this->account_id = $account_id ?: 'dummy';
+            $this->service_account_id = $service_account_id ?: 'dummy';
+            return;
+        }
+        
         if (empty($account_id) || empty($service_account_id)) {
             throw new \Exception('Please enter your Fireworks.ai credentials first.');
         }
@@ -19,6 +27,65 @@ class credential_service {
         $response = $this->create_api_key_for_user($user_id);
         $this->store_user_api_key($user_id, $response);
         return $response['key'];
+    }
+
+    /**
+     * Get or create Claude API key for user
+     * @param int $user_id The user ID
+     * @return string The Claude API key
+     */
+    public function get_claude_api_key($user_id) {
+        // For Claude, we use the admin's API key for all users
+        // This is different from Fireworks which creates individual keys
+        $claude_api_key = get_config('block_aiassistant', 'claude_api_key');
+        
+        if (empty($claude_api_key)) {
+            throw new \Exception('Claude API key not configured');
+        }
+
+        // Store the fact that this user is using Claude API
+        $this->store_claude_usage($user_id, $claude_api_key);
+        
+        return $claude_api_key;
+    }
+
+    /**
+     * Store Claude API usage for user
+     * @param int $user_id
+     * @param string $claude_api_key
+     */
+    private function store_claude_usage($user_id, $claude_api_key) {
+        global $DB;
+        
+        try {
+            // Check if user already has a record
+            $existing_record = $DB->get_record('block_aiassistant_keys', [
+                'userid' => $user_id,
+                'is_active' => 1
+            ]);
+
+            if ($existing_record) {
+                // Update existing record with Claude API key
+                $existing_record->claude_api_key = $claude_api_key;
+                $existing_record->last_used = time();
+                $DB->update_record('block_aiassistant_keys', $existing_record);
+            } else {
+                // Create new record for Claude usage
+                $record = new \stdClass();
+                $record->userid = $user_id;
+                $record->fireworks_key_id = ''; // Empty for Claude-only usage
+                $record->fireworks_api_key = ''; // Empty for Claude-only usage
+                $record->claude_api_key = $claude_api_key;
+                $record->display_name = "claude-user-{$user_id}";
+                $record->created_time = time();
+                $record->last_used = time();
+                $record->is_active = 1;
+                $DB->insert_record('block_aiassistant_keys', $record);
+            }
+        } catch (\Exception $e) {
+            error_log('Database error storing Claude usage: ' . $e->getMessage());
+            throw $e;
+        }
     }
     
     private function create_api_key_for_user($user_id) {
