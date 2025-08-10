@@ -420,54 +420,73 @@ export const init = () => {
                     const response = await fetch(url, options);
                     
                     if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
+                        const errorData = await response.text();
+                        console.error('Fireworks API error response:', errorData);
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                     }
                     
                     const reader = response.body.getReader();
                     const decoder = new TextDecoder();
                     let responseContent = '';
+                    let hasReceivedContent = false;
                     
-                    while (true) {
-                        const { done, value } = await reader.read();
-                        
-                        if (done) {
-                            break;
-                        }
-                        
-                        const chunk = decoder.decode(value);
-                        const lines = chunk.split('\n');
-                        
-                        for (const line of lines) {
-                            if (line.startsWith('data: ')) {
-                                const data = line.slice(6);
-                                
-                                if (data === '[DONE]') {
-                                    break;
-                                }
-                                
-                                try {
-                                    const parsed = JSON.parse(data);
+                    try {
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            
+                            if (done) {
+                                break;
+                            }
+                            
+                            const chunk = decoder.decode(value);
+                            const lines = chunk.split('\n');
+                            
+                            for (const line of lines) {
+                                if (line.startsWith('data: ')) {
+                                    const data = line.slice(6);
                                     
-                                    if (parsed.choices && parsed.choices[0] && parsed.choices[0].delta) {
-                                        const content = parsed.choices[0].delta.content || '';
-                                        responseContent += content;
+                                    if (data === '[DONE]') {
+                                        break;
+                                    }
+                                    
+                                    try {
+                                        const parsed = JSON.parse(data);
                                         
-                                        // Convert markdown to HTML if marked is available
-                                        if (typeof marked !== 'undefined' && marked.parse) {
-                                            const htmlContent = marked.parse(responseContent);
-                                            responseSpan.innerHTML = htmlContent;
-                                        } else {
-                                            responseSpan.textContent = responseContent;
+                                        if (parsed.error) {
+                                            throw new Error(parsed.error.message || 'API error');
                                         }
                                         
-                                        // Scroll to bottom
-                                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                                        if (parsed.choices && parsed.choices[0] && parsed.choices[0].delta) {
+                                            const content = parsed.choices[0].delta.content || '';
+                                            if (content) {
+                                                responseContent += content;
+                                                hasReceivedContent = true;
+                                                
+                                                // Convert markdown to HTML if marked is available
+                                                if (typeof marked !== 'undefined' && marked.parse) {
+                                                    const htmlContent = marked.parse(responseContent);
+                                                    responseSpan.innerHTML = htmlContent;
+                                                } else {
+                                                    responseSpan.textContent = responseContent;
+                                                }
+                                                
+                                                // Scroll to bottom
+                                                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                                            }
+                                        }
+                                    } catch (parseError) {
+                                        console.log('Non-JSON data chunk:', data);
                                     }
-                                } catch (parseError) {
-                                    console.log('Non-JSON data chunk:', data);
                                 }
                             }
                         }
+                    } finally {
+                        reader.releaseLock();
+                    }
+                    
+                    // Check if we received any content
+                    if (!hasReceivedContent) {
+                        responseSpan.textContent = 'No response received from Fireworks API.';
                     }
                     
                 } catch (error) {
@@ -527,58 +546,72 @@ export const init = () => {
                     const response = await fetch(url, options);
                     
                     if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
+                        const errorData = await response.text();
+                        console.error('Claude API error response:', errorData);
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                     }
                     
                     const reader = response.body.getReader();
                     const decoder = new TextDecoder();
                     let responseContent = '';
+                    let hasReceivedContent = false;
                     
-                    while (true) {
-                        const { done, value } = await reader.read();
-                        
-                        if (done) {
-                            break;
-                        }
-                        
-                        const chunk = decoder.decode(value);
-                        const lines = chunk.split('\n');
-                        
-                        for (const line of lines) {
-                            if (line.startsWith('data: ')) {
-                                const data = line.slice(6);
-                                
-                                if (data === '[DONE]') {
-                                    break;
-                                }
-                                
-                                try {
-                                    const parsed = JSON.parse(data);
+                    try {
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            
+                            if (done) {
+                                break;
+                            }
+                            
+                            const chunk = decoder.decode(value);
+                            const lines = chunk.split('\n');
+                            
+                            for (const line of lines) {
+                                if (line.startsWith('data: ')) {
+                                    const data = line.slice(6);
                                     
-                                    if (parsed.type === 'content_block_delta' && parsed.delta && parsed.delta.text) {
-                                        const content = parsed.delta.text;
-                                        responseContent += content;
-                                        
-                                        // Convert markdown to HTML if marked is available
-                                        if (typeof marked !== 'undefined' && marked.parse) {
-                                            const htmlContent = marked.parse(responseContent);
-                                            responseSpan.innerHTML = htmlContent;
-                                        } else {
-                                            responseSpan.textContent = responseContent;
-                                        }
-                                        
-                                        // Scroll to bottom
-                                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                                    } else if (parsed.type === 'error') {
-                                        console.error('Claude API error:', parsed.error);
-                                        responseSpan.textContent = 'Error: ' + parsed.error.message;
+                                    if (data === '[DONE]') {
                                         break;
                                     }
-                                } catch (parseError) {
-                                    console.log('Non-JSON data chunk:', data);
+                                    
+                                    try {
+                                        const parsed = JSON.parse(data);
+                                        
+                                        if (parsed.type === 'error') {
+                                            console.error('Claude API error:', parsed.error);
+                                            throw new Error(parsed.error.message || 'Claude API error');
+                                        }
+                                        
+                                        if (parsed.type === 'content_block_delta' && parsed.delta && parsed.delta.text) {
+                                            const content = parsed.delta.text;
+                                            responseContent += content;
+                                            hasReceivedContent = true;
+                                            
+                                            // Convert markdown to HTML if marked is available
+                                            if (typeof marked !== 'undefined' && marked.parse) {
+                                                const htmlContent = marked.parse(responseContent);
+                                                responseSpan.innerHTML = htmlContent;
+                                            } else {
+                                                responseSpan.textContent = responseContent;
+                                            }
+                                            
+                                            // Scroll to bottom
+                                            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                                        }
+                                    } catch (parseError) {
+                                        console.log('Non-JSON data chunk:', data);
+                                    }
                                 }
                             }
                         }
+                    } finally {
+                        reader.releaseLock();
+                    }
+                    
+                    // Check if we received any content
+                    if (!hasReceivedContent) {
+                        responseSpan.textContent = 'No response received from Claude API.';
                     }
                     
                 } catch (error) {
