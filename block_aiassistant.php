@@ -34,6 +34,22 @@ class block_aiassistant extends block_base {
         $html = "
         <script src=\"https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.js\"></script>
         <div class=\"ai-chat-container\" id=\"ai-chat-container\">
+            <div class=\"ai-provider-selection\">
+                <div class=\"ai-provider-controls\">
+                    <label for=\"ai-provider-select\">AI Provider:</label>
+                    <select id=\"ai-provider-select\">
+                        <option value=\"fireworks\">Fireworks.ai</option>
+                        <option value=\"claude\">Claude API</option>
+                    </select>
+                    
+                    <div id=\"claude-model-selection\" style=\"display: none;\">
+                        <label for=\"claude-model-select\">Claude Model:</label>
+                        <select id=\"claude-model-select\">
+                            <!-- Options will be populated by JavaScript -->
+                        </select>
+                    </div>
+                </div>
+            </div>
             <div class=\"ai-chat-messages\" id=\"ai-chat-messages\">
                 <div class=\"ai-message\">
                     <strong>AI Assistant:</strong> Hello! How can I help you today?
@@ -56,6 +72,39 @@ class block_aiassistant extends block_base {
                 border-radius: 8px;
                 overflow: hidden;
                 margin: 0 auto;
+            }
+
+            .ai-provider-selection {
+                background: #f0f0f0;
+                padding: 10px;
+                border-bottom: 1px solid #ddd;
+            }
+
+            .ai-provider-controls {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                flex-wrap: wrap;
+            }
+
+            .ai-provider-controls label {
+                font-weight: bold;
+                font-size: 12px;
+                color: #333;
+            }
+
+            .ai-provider-controls select {
+                padding: 5px 8px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                font-size: 12px;
+                background: white;
+            }
+
+            #claude-model-selection {
+                display: flex;
+                align-items: center;
+                gap: 5px;
             }
             
             .ai-chat-messages {
@@ -180,6 +229,11 @@ class block_aiassistant extends block_base {
             
             .ai-chat-input button:hover {
                 background: #005a87;
+            }
+
+            .ai-provider-disabled {
+                opacity: 0.6;
+                pointer-events: none;
             }
         </style>";
         
