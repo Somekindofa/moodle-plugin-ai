@@ -24,17 +24,18 @@ class get_user_credentials extends external_api {
      */
     public static function get_user_credentials_parameters() {
         return new external_function_parameters([
-            // No parameters needed - we get user from session
+            'provider' => new external_value(PARAM_TEXT, 'AI provider (fireworks or claude)', VALUE_DEFAULT, 'fireworks')
         ]);
     }
 
     /**
      * Get or create user credentials
+     * @param string $provider AI provider to get credentials for
      * @return array
      */
-    public static function get_user_credentials() {
+    public static function get_user_credentials($provider = 'fireworks') {
         global $USER, $DB;
-        error_log("DEBUG: Starting get_user_credentials for user " . $USER->id);
+        error_log("DEBUG: Starting get_user_credentials for user " . $USER->id . " with provider " . $provider);
 
         // Validate context
         $context = context_system::instance();
@@ -56,51 +57,11 @@ class get_user_credentials extends external_api {
                 ];
             }
 
-            // Check if user already has an active API key
-            error_log("DEBUG: Checking for existing key");
-            $existing_key = $DB->get_record('block_aiassistant_keys', [
-                'userid' => $USER->id,
-                'is_active' => 1
-            ]);
-
-            if ($existing_key) {
-                error_log("DEBUG: Found existing key for user " . $USER->id);
-                return [
-                    'success' => true,
-                    'api_key' => $existing_key->fireworks_api_key,
-                    'display_name' => $existing_key->display_name,
-                    'message' => 'Using existing API key'
-                ];
+            if ($provider === 'claude') {
+                return self::get_claude_credentials($USER->id);
+            } else {
+                return self::get_fireworks_credentials($USER->id);
             }
-
-            // No existing key, create new one
-            error_log("DEBUG: No existing key, getting config values");
-            $fireworks_account_id = get_config('block_aiassistant', 'fireworks_account_id');
-            $fireworks_service_account_id = get_config('block_aiassistant', 'fireworks_service_account_id');
-
-            // Debug: Check if config value exists
-            error_log('DEBUG: Fireworks Account ID: ' . var_export($fireworks_account_id, true));
-            error_log('DEBUG: Fireworks Service Account ID: ' . var_export($fireworks_service_account_id, true));
-            
-            if (empty($fireworks_account_id) || empty($fireworks_service_account_id)) {
-                return [
-                    'success' => false,
-                    'api_key' => '',
-                    'display_name' => '',
-                    'message' => 'Fireworks Account/Service Account ID not configured. Please check plugin settings.'
-                ];
-            }
-
-            error_log("DEBUG: Creating credential service");
-            $credential_service = new \block_aiassistant\credential_service($fireworks_account_id, $fireworks_service_account_id);
-            $api_key = $credential_service->generate_user_api_key($USER->id);
-
-            return [
-                'success' => true,
-                'api_key' => $api_key,
-                'display_name' => "moodle-user-{$USER->id}",
-                'message' => 'Created new API key'
-            ];
 
         } catch (\Exception $e) {
             error_log("DEBUG: Exception caught: " . $e->getMessage());
@@ -112,6 +73,87 @@ class get_user_credentials extends external_api {
                 'message' => 'Failed to get credentials: ' . $e->getMessage()
             ];
         }
+    }
+
+    /**
+     * Get Claude API credentials
+     * @param int $user_id
+     * @return array
+     */
+    private static function get_claude_credentials($user_id) {
+        error_log("DEBUG: Getting Claude credentials for user " . $user_id);
+        
+        // Check if Claude API is configured
+        $claude_api_key = get_config('block_aiassistant', 'claude_api_key');
+        if (empty($claude_api_key)) {
+            error_log("DEBUG: Claude API key not configured");
+            return [
+                'success' => false,
+                'api_key' => '',
+                'display_name' => '',
+                'message' => 'Claude API key not configured. Please check plugin settings.'
+            ];
+        }
+
+        error_log("DEBUG: Claude API key found, length: " . strlen($claude_api_key));
+
+        try {
+            // For Claude, we don't need Fireworks config, use dummy values if needed
+            $fireworks_account_id = get_config('block_aiassistant', 'fireworks_account_id') ?: 'dummy';
+            $fireworks_service_account_id = get_config('block_aiassistant', 'fireworks_service_account_id') ?: 'dummy';
+
+            $credential_service = new \block_aiassistant\credential_service($fireworks_account_id, $fireworks_service_account_id);
+            $claude_key = $credential_service->get_claude_api_key($user_id);
+
+            error_log("DEBUG: Successfully got Claude key for user " . $user_id);
+
+            return [
+                'success' => true,
+                'api_key' => $claude_key,
+                'display_name' => "claude-user-{$user_id}",
+                'message' => 'Claude API key retrieved'
+            ];
+
+        } catch (\Exception $e) {
+            error_log("DEBUG: Exception in get_claude_credentials: " . $e->getMessage());
+            return [
+                'success' => false,
+                'api_key' => '',
+                'display_name' => '',
+                'message' => 'Failed to get Claude credentials: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Get Fireworks API credentials (using master key approach)
+     * @param int $user_id
+     * @return array
+     */
+    private static function get_fireworks_credentials($user_id) {
+        error_log("DEBUG: Getting Fireworks credentials for user " . $user_id . " (master key approach)");
+
+        // Get the master Fireworks API key from plugin settings
+        $fireworks_api_key = get_config('block_aiassistant', 'fireworks_api_key');
+        
+        if (empty($fireworks_api_key)) {
+            error_log("DEBUG: Fireworks master API key not configured");
+            return [
+                'success' => false,
+                'api_key' => '',
+                'display_name' => '',
+                'message' => 'Fireworks API key not configured. Please check plugin settings.'
+            ];
+        }
+
+        error_log("DEBUG: Fireworks master API key found, length: " . strlen($fireworks_api_key));
+
+        return [
+            'success' => true,
+            'api_key' => $fireworks_api_key,
+            'display_name' => "fireworks-user-{$user_id}",
+            'message' => 'Using master Fireworks API key'
+        ];
     }
 
     /**
