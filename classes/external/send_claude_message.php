@@ -47,18 +47,20 @@ class send_claude_message extends external_api {
         require_login();
 
         try {
-            // Get user's Claude API key
-            $credential_service = new credential_service();
-            $credentials = $credential_service->get_user_api_key($USER->id, 'claude');
+            // Get user's Claude API key - use dummy Fireworks values for Claude-only operation
+            $fireworks_account_id = get_config('block_aiassistant', 'fireworks_account_id') ?: 'dummy';
+            $fireworks_service_account_id = get_config('block_aiassistant', 'fireworks_service_account_id') ?: 'dummy';
             
-            if (!$credentials['success']) {
+            $credential_service = new credential_service($fireworks_account_id, $fireworks_service_account_id);
+            
+            try {
+                $api_key = $credential_service->get_claude_api_key($USER->id);
+            } catch (\Exception $e) {
                 return [
                     'success' => false,
-                    'message' => $credentials['message'] ?: 'Failed to get Claude API credentials'
+                    'message' => 'Failed to get Claude API key: ' . $e->getMessage()
                 ];
             }
-
-            $api_key = $credentials['api_key'];
             
             // Prepare Claude API request
             $url = 'https://api.anthropic.com/v1/messages';
