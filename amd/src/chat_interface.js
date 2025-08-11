@@ -6,7 +6,6 @@
  */
 
 import * as Ajax from 'core/ajax';
-import Anthropic from '@anthropic-ai/sdk';
 
 /**
  * Initialize the AI chat interface
@@ -445,9 +444,9 @@ export const init = () => {
         }
 
         /**
-         * Send chat message to Claude API using Anthropic SDK
+         * Send chat message to Claude API via server-side proxy
          * @param {string} message - The message to send
-         * @param {string} apiKey - The API key for authentication
+         * @param {string} apiKey - The API key for authentication (not used in proxy approach)
          */
         async function sendClaudeChatMessage(message, apiKey) {
             setTimeout(async function() {
@@ -467,29 +466,24 @@ export const init = () => {
                 }
 
                 try {
-                    // Initialize Anthropic client with CORS support
-                    const anthropic = new Anthropic({
-                        apiKey: apiKey,
-                        dangerouslyAllowBrowser: true
+                    // Use server-side proxy to send message to Claude API
+                    const ajaxPromise = new Promise((resolve, reject) => {
+                        Ajax.call([{
+                            methodname: 'block_aiassistant_send_claude_message',
+                            args: { 
+                                message: message,
+                                model: modelToUse
+                            },
+                            done: resolve,
+                            fail: reject
+                        }]);
                     });
 
-                    // Send message to Claude API
-                    const response = await anthropic.messages.create({
-                        model: modelToUse,
-                        max_tokens: 2000,
-                        temperature: 0.7,
-                        messages: [
-                            {
-                                role: "user",
-                                content: message
-                            }
-                        ]
-                    });
-
+                    const response = await ajaxPromise;
                     console.log('Claude API response:', response);
                     
-                    if (response.content && response.content[0] && response.content[0].text) {
-                        const content = response.content[0].text;
+                    if (response.success && response.content) {
+                        const content = response.content;
                         // Convert markdown to HTML if marked is available
                         if (typeof marked !== 'undefined' && marked.parse) {
                             const htmlContent = marked.parse(content);
@@ -498,8 +492,9 @@ export const init = () => {
                             responseSpan.textContent = content;
                         }
                     } else {
-                        responseSpan.textContent = 'Sorry, I could not process your request. Unexpected response format from Claude API.';
-                        console.error('Unexpected Claude API response:', response);
+                        const errorMessage = response.message || 'Sorry, I could not process your request.';
+                        responseSpan.textContent = errorMessage;
+                        console.error('Claude API error:', response);
                     }
                 } catch (error) {
                     console.error('Claude API call failed:', error);
@@ -507,9 +502,7 @@ export const init = () => {
                     // Handle specific error types
                     let errorMessage = 'Sorry, there was an error processing your request';
                     if (error.message) {
-                        if (error.message.includes('CORS')) {
-                            errorMessage = 'CORS error - please check browser console for details';
-                        } else if (error.message.includes('401')) {
+                        if (error.message.includes('401')) {
                             errorMessage = 'Authentication failed - please check API key configuration';
                         } else if (error.message.includes('429')) {
                             errorMessage = 'Rate limit exceeded - please try again later';

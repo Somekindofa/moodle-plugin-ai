@@ -20,10 +20,10 @@ $functions = [
         'ajax'        => true,
         'loginrequired' => true,
     ],
-    'block_aiassistant_send_chat_message' => [
-        'classname'   => 'block_aiassistant_external',
-        'methodname'  => 'send_chat_message',
-        'description' => 'Send chat message to AI and get response',
+    'block_aiassistant_send_claude_message' => [
+        'classname'   => 'block_aiassistant\external\send_claude_message',
+        'methodname'  => 'send_claude_message',
+        'description' => 'Send message to Claude API via server-side proxy',
         'type'        => 'write',
         'ajax'        => true,
         'loginrequired' => true,
