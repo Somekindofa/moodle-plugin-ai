@@ -16,89 +16,68 @@ use context_system;
 
 /**
  * External API for getting AI configuration
+ * 
+ * @package    block_aiassistant
+ * @copyright  2025 Your Organization
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class get_ai_config extends external_api {
 
+    /** @var array Available Claude models */
+    private const CLAUDE_MODELS = [
+        [
+            'key' => 'claude-opus-4-1-20250805',
+            'name' => 'Claude Opus 4.1'
+        ],
+        [
+            'key' => 'claude-sonnet-4-20250514', 
+            'name' => 'Claude Sonnet 4'
+        ],
+        [
+            'key' => 'claude-3-5-haiku-latest',
+            'name' => 'Claude Haiku'
+        ]
+    ];
+
+    /** @var string Default Claude model */
+    private const DEFAULT_CLAUDE_MODEL = 'claude-sonnet-4-20250514';
+
     /**
      * Describes the parameters for get_ai_config
-     * @return external_function_parameters
      */
     public static function get_ai_config_parameters() {
-        return new external_function_parameters([
-            // No parameters needed
-        ]);
+        return new external_function_parameters([]);
     }
 
     /**
      * Get AI configuration for frontend
-     * @return array
      */
     public static function get_ai_config() {
         // Validate context
         $context = context_system::instance();
         self::validate_context($context);
-        
-        // Check if user is logged in
         require_login();
 
         try {
-            // Get Claude models configuration with fallback strings
-            $claude_models = [
-                [
-                    'key' => 'claude-opus-4-1-20250805',
-                    'name' => 'Claude Opus 4.1'
-                ],
-                [
-                    'key' => 'claude-sonnet-4-20250514', 
-                    'name' => 'Claude Sonnet 4'
-                ],
-                [
-                    'key' => 'claude-3-5-haiku-latest',
-                    'name' => 'Claude Haiku'
-                ]
-            ];
-
-            $default_claude_model = get_config('block_aiassistant', 'claude_default_model');
-            if (empty($default_claude_model)) {
-                $default_claude_model = 'claude-sonnet-4-20250514';
-            }
-
-            // Ensure default_claude_model is never null
-            if ($default_claude_model === null || $default_claude_model === false) {
-                $default_claude_model = 'claude-sonnet-4-20250514';
-            }
-
-            error_log("DEBUG: Default claude model: " . $default_claude_model);
-
-            // Check if Claude API is configured
-            $claude_api_key = get_config('block_aiassistant', 'claude_api_key');
-            $claude_available = !empty($claude_api_key);
-            error_log("DEBUG: Claude available: " . ($claude_available ? 'true' : 'false'));
-
-            // Check if Fireworks is configured
-            $fireworks_account_id = get_config('block_aiassistant', 'fireworks_account_id');
-            $fireworks_service_account_id = get_config('block_aiassistant', 'fireworks_service_account_id');
-            $fireworks_available = !empty($fireworks_account_id) && !empty($fireworks_service_account_id);
-            error_log("DEBUG: Fireworks available: " . ($fireworks_available ? 'true' : 'false'));
-
-            $result = [
+            $config = [
                 'success' => true,
-                'claude_models' => $claude_models,
-                'default_claude_model' => (string)$default_claude_model, // Ensure it's a string
-                'claude_available' => (bool)$claude_available,
-                'fireworks_available' => (bool)$fireworks_available,
+                'claude_models' => self::CLAUDE_MODELS,
+                'default_claude_model' => self::get_default_claude_model(),
+                'claude_available' => self::is_claude_configured(),
+                'fireworks_available' => self::is_fireworks_configured(),
                 'message' => 'Configuration retrieved successfully'
             ];
 
-            error_log("DEBUG: Returning AI config: " . json_encode($result));
-            return $result;
+            self::log_debug('AI configuration retrieved', $config);
+            return $config;
 
         } catch (\Exception $e) {
-            error_log("DEBUG: Exception in get_ai_config: " . $e->getMessage());
+            self::log_error('Failed to get AI configuration', $e);
+            
             return [
                 'success' => false,
                 'claude_models' => [],
-                'default_claude_model' => '',
+                'default_claude_model' => self::DEFAULT_CLAUDE_MODEL,
                 'claude_available' => false,
                 'fireworks_available' => false,
                 'message' => 'Failed to get configuration: ' . $e->getMessage()
@@ -107,8 +86,61 @@ class get_ai_config extends external_api {
     }
 
     /**
+     * Get default Claude model from config
+     */
+    private static function get_default_claude_model(): string {
+        $default_model = get_config('block_aiassistant', 'claude_default_model');
+        
+        if (empty($default_model)) {
+            return self::DEFAULT_CLAUDE_MODEL;
+        }
+        
+        // Ensure it's a valid model
+        $valid_models = array_column(self::CLAUDE_MODELS, 'key');
+        if (!in_array($default_model, $valid_models)) {
+            return self::DEFAULT_CLAUDE_MODEL;
+        }
+        
+        return $default_model;
+    }
+
+    /**
+     * Check if Claude API is configured
+     */
+    private static function is_claude_configured(): bool {
+        $claude_api_key = get_config('block_aiassistant', 'claude_api_key');
+        return !empty($claude_api_key);
+    }
+
+    /**
+     * Check if Fireworks API is configured
+     */
+    private static function is_fireworks_configured(): bool {
+        $account_id = get_config('block_aiassistant', 'fireworks_account_id');
+        $service_account_id = get_config('block_aiassistant', 'fireworks_service_account_id');
+        $api_key = get_config('block_aiassistant', 'fireworks_api_key');
+        
+        // Either individual keys OR master API key approach
+        return (!empty($account_id) && !empty($service_account_id)) || !empty($api_key);
+    }
+
+    /**
+     * Log debug message
+     */
+    private static function log_debug(string $message, array $context = []): void {
+        $context_str = empty($context) ? '' : ' ' . json_encode($context);
+        error_log("AI Assistant Debug: {$message}{$context_str}");
+    }
+
+    /**
+     * Log error message
+     */
+    private static function log_error(string $message, \Exception $e): void {
+        error_log("AI Assistant Error: {$message} - {$e->getMessage()}");
+    }
+
+    /**
      * Describes the return value for get_ai_config
-     * @return external_single_structure
      */
     public static function get_ai_config_returns() {
         return new external_single_structure([
