@@ -192,14 +192,10 @@ export const init = () => {
             if (aiConfig && aiConfig.claude_available) {
                 const claudeOption = document.createElement('option');
                 claudeOption.value = 'claude';
-                claudeOption.textContent = 'Claude API (Under maintenance - coming soon)';
-                claudeOption.disabled = true; // Temporarily disable Claude
-                claudeOption.style.color = '#999'; // Grey out the option
+                claudeOption.textContent = 'Claude API';
                 providerSelect.appendChild(claudeOption);
-                // Don't set hasAvailableProvider = true for Claude temporarily
+                hasAvailableProvider = true;
 
-                // Comment out Claude model population for now
-                /*
                 // Populate Claude models if element exists and models are available
                 if (claudeModelSelect && aiConfig.claude_models && Array.isArray(aiConfig.claude_models)) {
                     aiConfig.claude_models.forEach(model => {
@@ -215,7 +211,6 @@ export const init = () => {
                         selectedClaudeModel = aiConfig.default_claude_model;
                     }
                 }
-                */
             }
 
             // If no providers are available, add disabled options
@@ -449,9 +444,9 @@ export const init = () => {
         }
 
         /**
-         * Send chat message to Claude API
+         * Send chat message to Claude API via server-side proxy
          * @param {string} message - The message to send
-         * @param {string} apiKey - The API key for authentication
+         * @param {string} apiKey - The API key for authentication (not used in proxy approach)
          */
         async function sendClaudeChatMessage(message, apiKey) {
             setTimeout(async function() {
@@ -470,33 +465,25 @@ export const init = () => {
                     modelToUse = 'claude-sonnet-4-20250514'; // hardcoded fallback
                 }
 
-                const url = 'https://api.anthropic.com/v1/messages';
-                const options = {
-                    method: 'POST',
-                    headers: {
-                        'x-api-key': apiKey,
-                        'Content-Type': 'application/json',
-                        'anthropic-version': '2023-06-01'
-                    },
-                    body: JSON.stringify({
-                        model: modelToUse,
-                        max_tokens: 2000,
-                        messages: [
-                            {
-                                role: "user",
-                                content: message
-                            }
-                        ]
-                    })
-                };
-                
                 try {
-                    const response = await fetch(url, options);
-                    const data = await response.json();
-                    console.log(data);
+                    // Use server-side proxy to send message to Claude API
+                    const ajaxPromise = new Promise((resolve, reject) => {
+                        Ajax.call([{
+                            methodname: 'block_aiassistant_send_claude_message',
+                            args: { 
+                                message: message,
+                                model: modelToUse
+                            },
+                            done: resolve,
+                            fail: reject
+                        }]);
+                    });
+
+                    const response = await ajaxPromise;
+                    console.log('Claude API response:', response);
                     
-                    if (data.content && data.content[0] && data.content[0].text) {
-                        const content = data.content[0].text;
+                    if (response.success && response.content) {
+                        const content = response.content;
                         // Convert markdown to HTML if marked is available
                         if (typeof marked !== 'undefined' && marked.parse) {
                             const htmlContent = marked.parse(content);
@@ -504,14 +491,27 @@ export const init = () => {
                         } else {
                             responseSpan.textContent = content;
                         }
-                    } else if (data.error) {
-                        responseSpan.textContent = 'Error: ' + data.error.message;
                     } else {
-                        responseSpan.textContent = 'Sorry, I could not process your request.';
+                        const errorMessage = response.message || 'Sorry, I could not process your request.';
+                        responseSpan.textContent = errorMessage;
+                        console.error('Claude API error:', response);
                     }
                 } catch (error) {
-                    console.error(error);
-                    responseSpan.textContent = 'Sorry, there was an error processing your request: ' + error.message;
+                    console.error('Claude API call failed:', error);
+                    
+                    // Handle specific error types
+                    let errorMessage = 'Sorry, there was an error processing your request';
+                    if (error.message) {
+                        if (error.message.includes('401')) {
+                            errorMessage = 'Authentication failed - please check API key configuration';
+                        } else if (error.message.includes('429')) {
+                            errorMessage = 'Rate limit exceeded - please try again later';
+                        } else {
+                            errorMessage = `Error: ${error.message}`;
+                        }
+                    }
+                    
+                    responseSpan.textContent = errorMessage;
                 }
 
                 // Scroll to bottom
