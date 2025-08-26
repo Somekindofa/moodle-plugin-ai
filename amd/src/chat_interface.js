@@ -227,8 +227,6 @@ export const init = () => {
          * @param {string} apiKey - The master API key for authentication
          */
         async function sendFireworksChatMessage(message, apiKey) {
-            console.log('DEBUG: sendFireworksChatMessage called with:', { message, apiKey });
-            console.log('DEBUG: About to call FastAPI at http://127.0.0.1:8000/api/chat');
             setTimeout(async function() {
                 const aiMessageDiv = document.createElement("div");
                 aiMessageDiv.className = "ai-message";
@@ -257,25 +255,28 @@ export const init = () => {
                     // Handle Server-Sent Events (SSE) response
                     const reader = response.body.getReader();
                     const decoder = new TextDecoder();
-                    responseSpan.textContent = '';
+                    let accumulatedText = '';
+                    let lastProcessedLength = 0;
+                    
+                    // Debouncing variables for performance
+                    let parseTimeout = null;
+                    const PARSE_DELAY = 100; // ms
                 
                     while (true) {
                         const { done, value } = await reader.read();
                         if (done) break;
                         
                         const lines = decoder.decode(value, { stream: true }).split('\n');
-                        console.debug('Lines: ', lines);
                         for (const line of lines) {
                             if (!line.trim()) continue;
-                            
                             try {
                                 const data = JSON.parse(line);
-                                console.debug('Data: ', data)
                                 if (data.content === '[DONE]') break;
                                 if (data.content) {
-                                    responseSpan.textContent += data.content;
+                                    fullMarkdownText += data.content;
+                                    renderProgressiveMarkdown(fullMarkdownText, responseSpan);
                                     messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                                }
+                                } 
                                 if (data.error) throw new Error(data.error);
                             } catch (e) {
                                 console.error('Parse error:', e);
