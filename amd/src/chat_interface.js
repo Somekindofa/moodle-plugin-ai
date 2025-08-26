@@ -21,8 +21,6 @@ export const init = () => {
         const chatContainer = document.getElementById("ai-chat-container");
         const resizeHandle = document.getElementById("ai-resize-handle");
         const providerSelect = document.getElementById("ai-provider-select");
-        const claudeModelSelect = document.getElementById("claude-model-select");
-        const claudeModelSelection = document.getElementById("claude-model-selection");
 
         console.log('AI Chat: Elements found:', {
             sendButton: !!sendButton,
@@ -42,7 +40,6 @@ export const init = () => {
         // Global configuration storage
         let aiConfig = null;
         let currentProvider = 'fireworks';
-        let selectedClaudeModel = '';
 
         // Load AI configuration on startup
         loadAIConfiguration();
@@ -68,10 +65,7 @@ export const init = () => {
                         console.error('Full config object:', config);
                         aiConfig = {
                             success: false,
-                            claude_available: false,
                             fireworks_available: false,
-                            claude_models: [],
-                            default_claude_model: ''
                         };
                         showConfigurationError('Failed to load AI configuration. Please check plugin settings.');
                     }
@@ -85,10 +79,7 @@ export const init = () => {
                     });
                     aiConfig = {
                         success: false,
-                        claude_available: false,
                         fireworks_available: false,
-                        claude_models: [],
-                        default_claude_model: ''
                     };
                     showConfigurationError('Could not connect to AI configuration service.');
                 }
@@ -119,17 +110,11 @@ export const init = () => {
 
             console.log('DEBUG: aiConfig properties:', {
                 success: aiConfig.success,
-                claude_available: aiConfig.claude_available,
                 fireworks_available: aiConfig.fireworks_available,
-                default_claude_model: aiConfig.default_claude_model,
-                claude_models: aiConfig.claude_models
             });
 
             // Clear existing options
             providerSelect.innerHTML = '';
-            if (claudeModelSelect) {
-                claudeModelSelect.innerHTML = '';
-            }
 
             let hasAvailableProvider = false;
 
@@ -142,30 +127,6 @@ export const init = () => {
                 hasAvailableProvider = true;
             }
 
-            if (aiConfig && aiConfig.claude_available) {
-                const claudeOption = document.createElement('option');
-                claudeOption.value = 'claude';
-                claudeOption.textContent = 'Claude API';
-                providerSelect.appendChild(claudeOption);
-                hasAvailableProvider = true;
-
-                // Populate Claude models if element exists and models are available
-                if (claudeModelSelect && aiConfig.claude_models && Array.isArray(aiConfig.claude_models)) {
-                    aiConfig.claude_models.forEach(model => {
-                        const modelOption = document.createElement('option');
-                        modelOption.value = model.key;
-                        modelOption.textContent = model.name;
-                        claudeModelSelect.appendChild(modelOption);
-                    });
-
-                    // Set default Claude model
-                    if (aiConfig && aiConfig.default_claude_model) {
-                        claudeModelSelect.value = aiConfig.default_claude_model;
-                        selectedClaudeModel = aiConfig.default_claude_model;
-                    }
-                }
-            }
-
             // If no providers are available, add disabled options
             if (!hasAvailableProvider) {
                 if (!aiConfig || !aiConfig.fireworks_available) {
@@ -175,14 +136,6 @@ export const init = () => {
                     fireworksOption.disabled = true;
                     providerSelect.appendChild(fireworksOption);
                 }
-
-                if (!aiConfig || !aiConfig.claude_available) {
-                    const claudeOption = document.createElement('option');
-                    claudeOption.value = 'claude';
-                    claudeOption.textContent = 'Claude API (Not configured)';
-                    claudeOption.disabled = true;
-                    providerSelect.appendChild(claudeOption);
-                }
                 
                 showConfigurationError('No AI providers are configured. Please check plugin settings.');
                 return;
@@ -190,7 +143,6 @@ export const init = () => {
 
             // Restore saved selections
             const savedProvider = localStorage.getItem('ai-chat-provider');
-            const savedClaudeModel = localStorage.getItem('ai-chat-claude-model');
 
             if (savedProvider && document.querySelector(`option[value="${savedProvider}"]`)) {
                 providerSelect.value = savedProvider;
@@ -198,53 +150,7 @@ export const init = () => {
             } else if (aiConfig && aiConfig.fireworks_available) {
                 currentProvider = 'fireworks';
                 providerSelect.value = 'fireworks';
-            } else if (aiConfig && aiConfig.claude_available) {
-                currentProvider = 'claude';
-                providerSelect.value = 'claude';
             }
-
-            if (savedClaudeModel && claudeModelSelect && document.querySelector(`#claude-model-select option[value="${savedClaudeModel}"]`)) {
-                claudeModelSelect.value = savedClaudeModel;
-                selectedClaudeModel = savedClaudeModel;
-            }
-
-            // Show/hide Claude model selection
-            updateClaudeModelVisibility();
-        }
-
-        /**
-         * Update Claude model selection visibility
-         */
-        function updateClaudeModelVisibility() {
-            if (claudeModelSelection && currentProvider === 'claude' && aiConfig?.claude_available) {
-                claudeModelSelection.style.display = 'flex';
-            } else if (claudeModelSelection) {
-                claudeModelSelection.style.display = 'none';
-            }
-        }
-
-        // Provider selection change handler
-        if (providerSelect) {
-            providerSelect.addEventListener('change', function() {
-                currentProvider = this.value;
-                localStorage.setItem('ai-chat-provider', currentProvider);
-                updateClaudeModelVisibility();
-                
-                // Clear chat messages when switching providers
-                messagesContainer.innerHTML = `
-                    <div class="ai-message">
-                        <strong>AI Assistant:</strong> Hello! I'm now using ${currentProvider === 'claude' ? 'Claude API' : 'Fireworks.ai'}. How can I help you today?
-                    </div>
-                `;
-            });
-        }
-
-        // Claude model selection change handler
-        if (claudeModelSelect) {
-            claudeModelSelect.addEventListener('change', function() {
-                selectedClaudeModel = this.value;
-                localStorage.setItem('ai-chat-claude-model', selectedClaudeModel);
-            });
         }
 
         /**
@@ -257,7 +163,7 @@ export const init = () => {
             }
 
             // Check if we have a valid configuration
-            if (!aiConfig || (!aiConfig.fireworks_available && !aiConfig.claude_available)) {
+            if (!aiConfig || !aiConfig.fireworks_available) {
                 showConfigurationError('No AI providers are configured. Please check plugin settings.');
                 return;
             }
@@ -286,12 +192,7 @@ export const init = () => {
                     messagesContainer.removeChild(loadingDiv);
 
                     if (credentials.success) {
-                        // Now make the actual chat request using those credentials
-                        if (currentProvider === 'claude') {
-                            sendClaudeChatMessage(message, credentials.api_key);
-                        } else {
-                            sendFireworksChatMessage(message, credentials.api_key);
-                        }
+                        sendFireworksChatMessage(message, credentials.api_key);
                     } else {
                         const errorDiv = document.createElement("div");
                         errorDiv.className = "ai-message";
@@ -397,129 +298,6 @@ export const init = () => {
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
             }, 1000);
         }
-        // /**
-        //  * Send chat message to Claude API with streaming support
-        //  * @param {string} message - The message to send
-        //  * @param {string} apiKey - The API key for authentication
-        //  */
-        // async function sendClaudeChatMessage(message, apiKey) {
-        //     setTimeout(async function() {
-        //         const aiMessageDiv = document.createElement("div");
-        //         aiMessageDiv.className = "ai-message";
-        //         aiMessageDiv.innerHTML = `<strong>AI Assistant (Claude):</strong> <span class='response-text'></span>`;
-        //         messagesContainer.appendChild(aiMessageDiv);
-        //         const responseSpan = aiMessageDiv.querySelector('.response-text');
-                
-        //         // Determine which model to use with safe fallback
-        //         let modelToUse = selectedClaudeModel;
-        //         if (!modelToUse && aiConfig && aiConfig.default_claude_model) {
-        //             modelToUse = aiConfig.default_claude_model;
-        //         }
-        //         if (!modelToUse) {
-        //             modelToUse = 'claude-sonnet-4-20250514'; // hardcoded fallback
-        //         }
-
-        //         const url = 'https://api.anthropic.com/v1/messages';
-        //         const options = {
-        //             method: 'POST',
-        //             headers: {
-        //                 'x-api-key': apiKey,
-        //                 'Content-Type': 'application/json',
-        //                 'anthropic-version': '2023-06-01'
-        //             },
-        //             body: JSON.stringify({
-        //                 model: modelToUse,
-        //                 max_tokens: 2000,
-        //                 messages: [
-        //                     {
-        //                         role: "user",
-        //                         content: message
-        //                     }
-        //                 ],
-        //                 stream: true
-        //             })
-        //         };
-                
-        //         try {
-        //             const response = await fetch(url, options);
-                    
-        //             if (!response.ok) {
-        //                 const errorData = await response.text();
-        //                 console.error('Claude API error response:', errorData);
-        //                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        //             }
-                    
-        //             const reader = response.body.getReader();
-        //             const decoder = new TextDecoder();
-        //             let responseContent = '';
-        //             let hasReceivedContent = false;
-                    
-        //             try {
-        //                 while (true) {
-        //                     const { done, value } = await reader.read();
-                            
-        //                     if (done) {
-        //                         break;
-        //                     }
-                            
-        //                     const chunk = decoder.decode(value);
-        //                     const lines = chunk.split('\n');
-                            
-        //                     for (const line of lines) {
-        //                         if (line.startsWith('data: ')) {
-        //                             const data = line.slice(6);
-                                    
-        //                             if (data === '[DONE]') {
-        //                                 break;
-        //                             }
-                                    
-        //                             try {
-        //                                 const parsed = JSON.parse(data);
-                                        
-        //                                 if (parsed.type === 'error') {
-        //                                     console.error('Claude API error:', parsed.error);
-        //                                     throw new Error(parsed.error.message || 'Claude API error');
-        //                                 }
-                                        
-        //                                 if (parsed.type === 'content_block_delta' && parsed.delta && parsed.delta.text) {
-        //                                     const content = parsed.delta.text;
-        //                                     responseContent += content;
-        //                                     hasReceivedContent = true;
-                                            
-        //                                     // Convert markdown to HTML if marked is available
-        //                                     if (typeof marked !== 'undefined' && marked.parse) {
-        //                                         const htmlContent = marked.parse(responseContent);
-        //                                         responseSpan.innerHTML = htmlContent;
-        //                                     } else {
-        //                                         responseSpan.textContent = responseContent;
-        //                                     }
-                                            
-        //                                     // Scroll to bottom
-        //                                     messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        //                                 }
-        //                             } catch (parseError) {
-        //                                 console.log('Non-JSON data chunk:', data);
-        //                             }
-        //                         }
-        //                     }
-        //                 }
-        //             } finally {
-        //                 reader.releaseLock();
-        //             }
-                    
-        //             // Check if we received any content
-        //             if (!hasReceivedContent) {
-        //                 responseSpan.textContent = 'No response received from Claude API.';
-        //             }
-                    
-        //         } catch (error) {
-        //             console.error('Claude API call failed:', error);
-        //             responseSpan.textContent = 'Sorry, there was an error processing your request: ' + error.message;
-        //         }
-        //         // Final scroll to bottom
-        //         messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        //     }, 1000);
-        // }
 
         sendButton.addEventListener("click", sendMessage);
         chatInput.addEventListener("keypress", function(e) {
