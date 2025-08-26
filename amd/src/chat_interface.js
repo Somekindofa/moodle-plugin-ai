@@ -331,6 +331,8 @@ export const init = () => {
          * @param {string} apiKey - The master API key for authentication
          */
         async function sendFireworksChatMessage(message, apiKey) {
+            console.log('DEBUG: sendFireworksChatMessage called with:', { message, apiKey });
+            console.log('DEBUG: About to call FastAPI at http://127.0.0.1:8000/api/chat');
             setTimeout(async function() {
                 const aiMessageDiv = document.createElement("div");
                 aiMessageDiv.className = "ai-message";
@@ -359,31 +361,28 @@ export const init = () => {
                     // Handle Server-Sent Events (SSE) response
                     const reader = response.body.getReader();
                     const decoder = new TextDecoder();
-                    responseSpan.textContent = ''; // Clear "Thinking..."
-                    
+                    responseSpan.textContent = '';
+                
                     while (true) {
                         const { done, value } = await reader.read();
                         if (done) break;
                         
-                        const chunk = decoder.decode(value);
-                        const lines = chunk.split('\n');
-                        
+                        const lines = decoder.decode(value, { stream: true }).split('\n');
+                        console.debug('Lines: ', lines);
                         for (const line of lines) {
-                            if (line.startsWith('data: ')) {
-                                const data = line.slice(6);
-                                
-                                if (data === '[DONE]') {
-                                    continue;
+                            if (!line.trim()) continue;
+                            
+                            try {
+                                const data = JSON.parse(line);
+                                console.debug('Data: ', data)
+                                if (data.content === '[DONE]') break;
+                                if (data.content) {
+                                    responseSpan.textContent += data.content;
+                                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
                                 }
-                                
-                                try {
-                                    const parsed = JSON.parse(data);
-                                    if (parsed.content) {
-                                        responseSpan.textContent += parsed.content;
-                                    }
-                                } catch (e) {
-                                    // Skip malformed JSON chunks
-                                }
+                                if (data.error) throw new Error(data.error);
+                            } catch (e) {
+                                console.error('Parse error:', e);
                             }
                         }
                     }
@@ -404,130 +403,130 @@ export const init = () => {
             }, 1000);
         }
 
-        /**
-         * Send chat message to Claude API with streaming support
-         * @param {string} message - The message to send
-         * @param {string} apiKey - The API key for authentication
-         */
-        async function sendClaudeChatMessage(message, apiKey) {
-            setTimeout(async function() {
-                const aiMessageDiv = document.createElement("div");
-                aiMessageDiv.className = "ai-message";
-                aiMessageDiv.innerHTML = `<strong>AI Assistant (Claude):</strong> <span class='response-text'></span>`;
-                messagesContainer.appendChild(aiMessageDiv);
-                const responseSpan = aiMessageDiv.querySelector('.response-text');
+        // /**
+        //  * Send chat message to Claude API with streaming support
+        //  * @param {string} message - The message to send
+        //  * @param {string} apiKey - The API key for authentication
+        //  */
+        // async function sendClaudeChatMessage(message, apiKey) {
+        //     setTimeout(async function() {
+        //         const aiMessageDiv = document.createElement("div");
+        //         aiMessageDiv.className = "ai-message";
+        //         aiMessageDiv.innerHTML = `<strong>AI Assistant (Claude):</strong> <span class='response-text'></span>`;
+        //         messagesContainer.appendChild(aiMessageDiv);
+        //         const responseSpan = aiMessageDiv.querySelector('.response-text');
                 
-                // Determine which model to use with safe fallback
-                let modelToUse = selectedClaudeModel;
-                if (!modelToUse && aiConfig && aiConfig.default_claude_model) {
-                    modelToUse = aiConfig.default_claude_model;
-                }
-                if (!modelToUse) {
-                    modelToUse = 'claude-sonnet-4-20250514'; // hardcoded fallback
-                }
+        //         // Determine which model to use with safe fallback
+        //         let modelToUse = selectedClaudeModel;
+        //         if (!modelToUse && aiConfig && aiConfig.default_claude_model) {
+        //             modelToUse = aiConfig.default_claude_model;
+        //         }
+        //         if (!modelToUse) {
+        //             modelToUse = 'claude-sonnet-4-20250514'; // hardcoded fallback
+        //         }
 
-                const url = 'https://api.anthropic.com/v1/messages';
-                const options = {
-                    method: 'POST',
-                    headers: {
-                        'x-api-key': apiKey,
-                        'Content-Type': 'application/json',
-                        'anthropic-version': '2023-06-01'
-                    },
-                    body: JSON.stringify({
-                        model: modelToUse,
-                        max_tokens: 2000,
-                        messages: [
-                            {
-                                role: "user",
-                                content: message
-                            }
-                        ],
-                        stream: true
-                    })
-                };
+        //         const url = 'https://api.anthropic.com/v1/messages';
+        //         const options = {
+        //             method: 'POST',
+        //             headers: {
+        //                 'x-api-key': apiKey,
+        //                 'Content-Type': 'application/json',
+        //                 'anthropic-version': '2023-06-01'
+        //             },
+        //             body: JSON.stringify({
+        //                 model: modelToUse,
+        //                 max_tokens: 2000,
+        //                 messages: [
+        //                     {
+        //                         role: "user",
+        //                         content: message
+        //                     }
+        //                 ],
+        //                 stream: true
+        //             })
+        //         };
                 
-                try {
-                    const response = await fetch(url, options);
+        //         try {
+        //             const response = await fetch(url, options);
                     
-                    if (!response.ok) {
-                        const errorData = await response.text();
-                        console.error('Claude API error response:', errorData);
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                    }
+        //             if (!response.ok) {
+        //                 const errorData = await response.text();
+        //                 console.error('Claude API error response:', errorData);
+        //                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        //             }
                     
-                    const reader = response.body.getReader();
-                    const decoder = new TextDecoder();
-                    let responseContent = '';
-                    let hasReceivedContent = false;
+        //             const reader = response.body.getReader();
+        //             const decoder = new TextDecoder();
+        //             let responseContent = '';
+        //             let hasReceivedContent = false;
                     
-                    try {
-                        while (true) {
-                            const { done, value } = await reader.read();
+        //             try {
+        //                 while (true) {
+        //                     const { done, value } = await reader.read();
                             
-                            if (done) {
-                                break;
-                            }
+        //                     if (done) {
+        //                         break;
+        //                     }
                             
-                            const chunk = decoder.decode(value);
-                            const lines = chunk.split('\n');
+        //                     const chunk = decoder.decode(value);
+        //                     const lines = chunk.split('\n');
                             
-                            for (const line of lines) {
-                                if (line.startsWith('data: ')) {
-                                    const data = line.slice(6);
+        //                     for (const line of lines) {
+        //                         if (line.startsWith('data: ')) {
+        //                             const data = line.slice(6);
                                     
-                                    if (data === '[DONE]') {
-                                        break;
-                                    }
+        //                             if (data === '[DONE]') {
+        //                                 break;
+        //                             }
                                     
-                                    try {
-                                        const parsed = JSON.parse(data);
+        //                             try {
+        //                                 const parsed = JSON.parse(data);
                                         
-                                        if (parsed.type === 'error') {
-                                            console.error('Claude API error:', parsed.error);
-                                            throw new Error(parsed.error.message || 'Claude API error');
-                                        }
+        //                                 if (parsed.type === 'error') {
+        //                                     console.error('Claude API error:', parsed.error);
+        //                                     throw new Error(parsed.error.message || 'Claude API error');
+        //                                 }
                                         
-                                        if (parsed.type === 'content_block_delta' && parsed.delta && parsed.delta.text) {
-                                            const content = parsed.delta.text;
-                                            responseContent += content;
-                                            hasReceivedContent = true;
+        //                                 if (parsed.type === 'content_block_delta' && parsed.delta && parsed.delta.text) {
+        //                                     const content = parsed.delta.text;
+        //                                     responseContent += content;
+        //                                     hasReceivedContent = true;
                                             
-                                            // Convert markdown to HTML if marked is available
-                                            if (typeof marked !== 'undefined' && marked.parse) {
-                                                const htmlContent = marked.parse(responseContent);
-                                                responseSpan.innerHTML = htmlContent;
-                                            } else {
-                                                responseSpan.textContent = responseContent;
-                                            }
+        //                                     // Convert markdown to HTML if marked is available
+        //                                     if (typeof marked !== 'undefined' && marked.parse) {
+        //                                         const htmlContent = marked.parse(responseContent);
+        //                                         responseSpan.innerHTML = htmlContent;
+        //                                     } else {
+        //                                         responseSpan.textContent = responseContent;
+        //                                     }
                                             
-                                            // Scroll to bottom
-                                            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                                        }
-                                    } catch (parseError) {
-                                        console.log('Non-JSON data chunk:', data);
-                                    }
-                                }
-                            }
-                        }
-                    } finally {
-                        reader.releaseLock();
-                    }
+        //                                     // Scroll to bottom
+        //                                     messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        //                                 }
+        //                             } catch (parseError) {
+        //                                 console.log('Non-JSON data chunk:', data);
+        //                             }
+        //                         }
+        //                     }
+        //                 }
+        //             } finally {
+        //                 reader.releaseLock();
+        //             }
                     
-                    // Check if we received any content
-                    if (!hasReceivedContent) {
-                        responseSpan.textContent = 'No response received from Claude API.';
-                    }
+        //             // Check if we received any content
+        //             if (!hasReceivedContent) {
+        //                 responseSpan.textContent = 'No response received from Claude API.';
+        //             }
                     
-                } catch (error) {
-                    console.error('Claude API call failed:', error);
-                    responseSpan.textContent = 'Sorry, there was an error processing your request: ' + error.message;
-                }
+        //         } catch (error) {
+        //             console.error('Claude API call failed:', error);
+        //             responseSpan.textContent = 'Sorry, there was an error processing your request: ' + error.message;
+        //         }
 
-                // Final scroll to bottom
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            }, 1000);
-        }
+        //         // Final scroll to bottom
+        //         messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        //     }, 1000);
+        // }
 
         sendButton.addEventListener("click", sendMessage);
         chatInput.addEventListener("keypress", function(e) {
