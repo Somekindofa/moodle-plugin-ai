@@ -26,6 +26,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# node
+node_modules/
+
 # html
 *.html
 
