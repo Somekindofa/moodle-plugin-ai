@@ -12,4 +12,4 @@ $plugin->component = 'block_aiassistant';
 $plugin->version = 2025082601; // Updated version to force Moodle upgrade
 $plugin->requires = 2022112800; // Moodle 4.1
 $plugin->maturity = MATURITY_STABLE;
-$plugin->release = '0.2.1';
+$plugin->release = '0.2.2'; // Incremented for refactoring release

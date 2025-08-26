@@ -145,14 +145,10 @@ export const init = () => {
             if (aiConfig && aiConfig.claude_available) {
                 const claudeOption = document.createElement('option');
                 claudeOption.value = 'claude';
-                claudeOption.textContent = 'Claude API (Under maintenance - coming soon)';
-                claudeOption.disabled = true; // Temporarily disable Claude
-                claudeOption.style.color = '#999'; // Grey out the option
+                claudeOption.textContent = 'Claude API';
                 providerSelect.appendChild(claudeOption);
-                // Don't set hasAvailableProvider = true for Claude temporarily
+                hasAvailableProvider = true;
 
-                // Comment out Claude model population for now
-                /*
                 // Populate Claude models if element exists and models are available
                 if (claudeModelSelect && aiConfig.claude_models && Array.isArray(aiConfig.claude_models)) {
                     aiConfig.claude_models.forEach(model => {
@@ -168,7 +164,6 @@ export const init = () => {
                         selectedClaudeModel = aiConfig.default_claude_model;
                     }
                 }
-                */
             }
 
             // If no providers are available, add disabled options
@@ -402,7 +397,6 @@ export const init = () => {
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
             }, 1000);
         }
-
         // /**
         //  * Send chat message to Claude API with streaming support
         //  * @param {string} message - The message to send
@@ -522,7 +516,6 @@ export const init = () => {
         //             console.error('Claude API call failed:', error);
         //             responseSpan.textContent = 'Sorry, there was an error processing your request: ' + error.message;
         //         }
-
         //         // Final scroll to bottom
         //         messagesContainer.scrollTop = messagesContainer.scrollHeight;
         //     }, 1000);
