@@ -29,7 +29,6 @@ export const init = () => {
             chatContainer: !!chatContainer,
             resizeHandle: !!resizeHandle,
             providerSelect: !!providerSelect,
-            claudeModelSelect: !!claudeModelSelect
         });
 
         if (!sendButton || !chatInput || !messagesContainer || !providerSelect) {
