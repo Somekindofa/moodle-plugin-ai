@@ -65,9 +65,9 @@ class block_aiassistant extends block_base {
         <style>
             .ai-chat-container {
                 position: relative;
-                width: 400px;
+                width: 500px;
                 min-width: 300px;
-                max-width: 800px;
+                max-width: 900px;
                 border: 1px solid #ddd;
                 border-radius: 8px;
                 overflow: hidden;
@@ -108,7 +108,7 @@ class block_aiassistant extends block_base {
             }
             
             .ai-chat-messages {
-                height: 200px;
+                height: 400px;
                 min-height: 150px;
                 max-height: 600px;
                 overflow-y: auto;
