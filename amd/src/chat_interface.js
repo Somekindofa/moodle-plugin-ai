@@ -21,6 +21,10 @@ export const init = () => {
         const chatContainer = document.getElementById("ai-chat-container");
         const resizeHandle = document.getElementById("ai-resize-handle");
         const providerSelect = document.getElementById("ai-provider-select");
+        const toggleSidebarBtn = document.getElementById("ai-toggle-sidebar");
+        const closeSidebarBtn = document.getElementById("ai-close-sidebar");
+        const documentsSidebar = document.getElementById("ai-documents-sidebar");
+        const documentsList = document.getElementById("ai-documents-list");
 
         console.log('AI Chat: Elements found:', {
             sendButton: !!sendButton,
@@ -29,6 +33,10 @@ export const init = () => {
             chatContainer: !!chatContainer,
             resizeHandle: !!resizeHandle,
             providerSelect: !!providerSelect,
+            toggleSidebarBtn: !!toggleSidebarBtn,
+            closeSidebarBtn: !!closeSidebarBtn,
+            documentsSidebar: !!documentsSidebar,
+            documentsList: !!documentsList,
         });
 
         if (!sendButton || !chatInput || !messagesContainer || !providerSelect) {
@@ -42,6 +50,84 @@ export const init = () => {
 
         // Load AI configuration on startup
         loadAIConfiguration();
+
+        // Setup sidebar event listeners
+        setupSidebarEvents();
+
+        /**
+         * Setup sidebar event listeners
+         */
+        function setupSidebarEvents() {
+            if (toggleSidebarBtn) {
+                toggleSidebarBtn.addEventListener('click', toggleSidebar);
+            }
+            if (closeSidebarBtn) {
+                closeSidebarBtn.addEventListener('click', closeSidebar);
+            }
+        }
+
+        /**
+         * Toggle sidebar visibility
+         */
+        function toggleSidebar() {
+            if (documentsSidebar && messagesContainer) {
+                if (documentsSidebar.classList.contains('open')) {
+                    closeSidebar();
+                } else {
+                    openSidebar();
+                }
+            }
+        }
+
+        /**
+         * Open the documents sidebar
+         */
+        function openSidebar() {
+            if (documentsSidebar && messagesContainer) {
+                documentsSidebar.classList.add('open');
+                messagesContainer.classList.add('sidebar-open');
+            }
+        }
+
+        /**
+         * Close the documents sidebar
+         */
+        function closeSidebar() {
+            if (documentsSidebar && messagesContainer) {
+                documentsSidebar.classList.remove('open');
+                messagesContainer.classList.remove('sidebar-open');
+            }
+        }
+
+        /**
+         * Populate the documents sidebar with retrieved documents
+         * @param {Array} documents - Array of document objects with title property
+         */
+        function populateDocumentsSidebar(documents) {
+            if (!documentsList || !toggleSidebarBtn) {
+                return;
+            }
+
+            if (!documents || documents.length === 0) {
+                documentsList.innerHTML = '<div class="no-documents">No documents retrieved</div>';
+                return;
+            }
+
+            // Show the toggle button since we have documents
+            toggleSidebarBtn.style.display = 'inline-block';
+
+            // Create document items HTML
+            const documentsHtml = documents.map(doc => `
+                <div class="document-item">
+                    <div class="doc-title">${doc.title || 'Untitled Document'}</div>
+                </div>
+            `).join('');
+
+            documentsList.innerHTML = documentsHtml;
+
+            // Auto-open sidebar when documents are retrieved
+            openSidebar();
+        }
 
         /**
          * Load AI configuration from backend
@@ -274,6 +360,11 @@ export const init = () => {
                                 if (data.content) {
                                     responseSpan.textContent += data.content;
                                     messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                                }
+                                // Handle retrieved documents
+                                if (data.retrieved_documents && data.retrieved_documents.length > 0) {
+                                    console.log('Retrieved documents:', data.retrieved_documents);
+                                    populateDocumentsSidebar(data.retrieved_documents);
                                 }
                                 if (data.error) throw new Error(data.error);
                             } catch (e) {
