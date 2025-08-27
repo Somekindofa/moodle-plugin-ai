@@ -40,13 +40,28 @@ class block_aiassistant extends block_base {
                     <select id=\"ai-provider-select\">
                         <option value=\"fireworks\">Fireworks.ai</option>
                     </select>
+                    <button id=\"ai-toggle-sidebar\" type=\"button\" title=\"Toggle Documents Sidebar\" style=\"display: none;\">📄</button>
                 </div>
             </div>
-            <div class=\"ai-chat-messages\" id=\"ai-chat-messages\">
-                <div class=\"ai-message\">
-                    <strong>AI Assistant:</strong> Hello! How can I help you today?
+
+            <div class=\"ai-chat-content\">
+                <div class=\"ai-chat-messages\" id=\"ai-chat-messages\">
+                    <div class=\"ai-message\">
+                        <strong>AI Assistant:</strong> Hello! How can I help you today?
+                    </div>
+                </div>
+
+                <div class=\"ai-documents-sidebar\" id=\"ai-documents-sidebar\">
+                    <div class=\"sidebar-header\">
+                        <h4>Retrieved Documents</h4>
+                        <button id=\"ai-close-sidebar\" type=\"button\">&times;</button>
+                    </div>
+                    <div class=\"sidebar-content\" id=\"ai-documents-list\">
+                        <div class=\"no-documents\">No documents retrieved</div>
+                    </div>
                 </div>
             </div>
+
             <div class=\"ai-chat-input\">
                 <textarea id=\"ai-chat-input\" placeholder=\"Type your message here...\" rows=\"3\"></textarea>
                 <button id=\"ai-chat-send\" type=\"button\">Send</button>
@@ -91,8 +106,29 @@ class block_aiassistant extends block_base {
                 font-size: 12px;
                 background: white;
             }
+
+            #ai-toggle-sidebar {
+                padding: 5px 8px;
+                background: #007cba;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 12px;
+                margin-left: auto;
+            }
+
+            #ai-toggle-sidebar:hover {
+                background: #005a87;
+            }
+
+            .ai-chat-content {
+                display: flex;
+                position: relative;
+            }
             
             .ai-chat-messages {
+                flex: 1;
                 height: 400px;
                 min-height: 150px;
                 max-height: 600px;
@@ -100,6 +136,92 @@ class block_aiassistant extends block_base {
                 padding: 10px;
                 background: #f9f9f9;
                 border-bottom: 1px solid #ddd;
+                transition: margin-right 0.3s ease;
+            }
+
+            .ai-chat-messages.sidebar-open {
+                margin-right: 250px;
+            }
+
+            .ai-documents-sidebar {
+                position: absolute;
+                top: 0;
+                right: -250px;
+                width: 250px;
+                height: 100%;
+                background: #fff;
+                border-left: 1px solid #ddd;
+                transition: right 0.3s ease;
+                z-index: 10;
+                display: flex;
+                flex-direction: column;
+            }
+
+            .ai-documents-sidebar.open {
+                right: 0;
+            }
+
+            .sidebar-header {
+                padding: 10px;
+                background: #f5f5f5;
+                border-bottom: 1px solid #ddd;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+            .sidebar-header h4 {
+                margin: 0;
+                font-size: 14px;
+                color: #333;
+            }
+
+            #ai-close-sidebar {
+                background: none;
+                border: none;
+                font-size: 18px;
+                cursor: pointer;
+                color: #666;
+                padding: 0;
+                width: 20px;
+                height: 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            #ai-close-sidebar:hover {
+                color: #333;
+            }
+
+            .sidebar-content {
+                flex: 1;
+                padding: 10px;
+                overflow-y: auto;
+            }
+
+            .no-documents {
+                text-align: center;
+                color: #666;
+                font-style: italic;
+                margin-top: 20px;
+                font-size: 12px;
+            }
+
+            .document-item {
+                background: #f9f9f9;
+                border: 1px solid #e0e0e0;
+                border-radius: 4px;
+                padding: 8px;
+                margin-bottom: 8px;
+                font-size: 12px;
+            }
+
+            .document-item .doc-title {
+                font-weight: bold;
+                color: #333;
+                line-height: 1.3;
+                word-wrap: break-word;
             }
             
             .ai-resize-handle {
