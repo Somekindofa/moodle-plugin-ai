@@ -7,6 +7,8 @@
 
 import * as Ajax from 'core/ajax';
 
+let conversationHistory = [];
+
 /**
  * Initialize the AI chat interface
  */
@@ -242,7 +244,10 @@ export const init = () => {
                     },
                     body: JSON.stringify({
                         "message": message,
-                        "history": [] // Empty for now, you can build conversation history later
+                        "history": conversationHistory.map(msg => ({
+                            "role": msg.role,
+                            "content": msg.content
+                        })),
                     })
                 };
                 
@@ -253,14 +258,9 @@ export const init = () => {
                         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                     }
                     // Handle Server-Sent Events (SSE) response
+                    let aiResponse = '';
                     const reader = response.body.getReader();
                     const decoder = new TextDecoder();
-                    let accumulatedText = '';
-                    let lastProcessedLength = 0;
-                    
-                    // Debouncing variables for performance
-                    let parseTimeout = null;
-                    const PARSE_DELAY = 100; // ms
                 
                     while (true) {
                         const { done, value } = await reader.read();
@@ -273,6 +273,7 @@ export const init = () => {
                                 const data = JSON.parse(line);
                                 if (data.content === '[DONE]') break;
                                 if (data.content) {
+                                    aiResponse += data.content;
                                     fullMarkdownText += data.content;
                                     renderProgressiveMarkdown(fullMarkdownText, responseSpan);
                                     messagesContainer.scrollTop = messagesContainer.scrollHeight;
@@ -283,6 +284,11 @@ export const init = () => {
                             }
                         }
                     }
+                    // Update conversation history
+                conversationHistory.push(
+                    { role: "user", content: message },
+                    { role: "assistant", content: aiResponse }
+                );
                     
                     // Convert final markdown to HTML if marked is available
                     if (typeof marked !== 'undefined' && marked.parse) {
