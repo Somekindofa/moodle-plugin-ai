@@ -40,15 +40,7 @@ class block_aiassistant extends block_base {
 
                     <select id=\"ai-provider-select\">
                         <option value=\"fireworks\">Fireworks.ai</option>
-                        <option value=\"claude\">Claude API</option>
                     </select>
-                    
-                    <div id=\"claude-model-selection\" style=\"display: none;\">
-                        <label for=\"claude-model-select\">Claude Model:</label>
-                        <select id=\"claude-model-select\">
-                            <!-- Options will be populated by JavaScript -->
-                        </select>
-                    </div>
                 </div>
             </div>
 
@@ -73,8 +65,6 @@ class block_aiassistant extends block_base {
                 <textarea id=\"ai-chat-input\" placeholder=\"Type your message here...\" rows=\"3\"></textarea>
                 <button id=\"ai-chat-send\" type=\"button\">Send</button>
             </div>
-            
-            <div class=\"ai-resize-handle\" id=\"ai-resize-handle\" title=\"Drag to resize\"></div>
         </div>
         
         <style>
@@ -180,12 +170,6 @@ class block_aiassistant extends block_base {
                 border-radius: 4px;
                 font-size: 12px;
                 background: white;
-            }
-
-            #claude-model-selection {
-                display: flex;
-                align-items: center;
-                gap: 5px;
             }
             
             .ai-chat-messages {
