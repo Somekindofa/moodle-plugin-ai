@@ -37,16 +37,30 @@ class block_aiassistant extends block_base {
             <div class=\"ai-provider-selection\">
                 <div class=\"ai-provider-controls\">
                     <label for=\"ai-provider-select\">AI Provider:</label>
+
                     <select id=\"ai-provider-select\">
                         <option value=\"fireworks\">Fireworks.ai</option>
                     </select>
                 </div>
             </div>
+
             <div class=\"ai-chat-messages\" id=\"ai-chat-messages\">
                 <div class=\"ai-message\">
                     <strong>AI Assistant:</strong> Hello! How can I help you today?
                 </div>
             </div>
+
+            <div class=\"ai-sidepanel\" id=\"ai-sidepanel\" style=\"display: none;\">
+                <div class=\"ai-sidepanel-header\">
+                    <h4>Retrieved Documents</h4>
+                    <button id=\"ai-sidepanel-close\" type=\"button\">×</button>
+                </div>
+
+                <div class=\"ai-sidepanel-content\" id=\"ai-sidepanel-content\">
+                    <p>No documents retrieved yet.</p>
+                </div>
+            </div>
+
             <div class=\"ai-chat-input\">
                 <textarea id=\"ai-chat-input\" placeholder=\"Type your message here...\" rows=\"3\"></textarea>
                 <button id=\"ai-chat-send\" type=\"button\">Send</button>
@@ -54,6 +68,72 @@ class block_aiassistant extends block_base {
         </div>
         
         <style>
+            .ai-sidepanel {
+                position: absolute;
+                right: -300px;
+                top: 0;
+                width: 280px;
+                height: 100%;
+                background: #fff;
+                border-left: 1px solid #ddd;
+                box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+                transition: right 0.3s ease;
+                z-index: 1000;
+            }
+            
+            .ai-sidepanel.active {
+                right: 0;
+            }
+            
+            .ai-sidepanel-header {
+                padding: 10px;
+                background: #f0f0f0;
+                border-bottom: 1px solid #ddd;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            
+            .ai-sidepanel-header h4 {
+                margin: 0;
+                font-size: 14px;
+                color: #333;
+            }
+            
+            #ai-sidepanel-close {
+                background: none;
+                border: none;
+                font-size: 18px;
+                cursor: pointer;
+                padding: 0;
+                width: 24px;
+                height: 24px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            
+            .ai-sidepanel-content {
+                padding: 10px;
+                height: calc(100% - 50px);
+                overflow-y: auto;
+            }
+            
+            .ai-document-list {
+                list-style: none;
+                padding: 0;
+                margin: 0;
+            }
+            
+            .ai-document-list li {
+                padding: 8px;
+                margin-bottom: 5px;
+                background: #f9f9f9;
+                border-radius: 4px;
+                font-size: 12px;
+                word-break: break-all;
+            }
+            
             .ai-chat-container {
                 position: relative;
                 width: 500px;
