@@ -7,6 +7,8 @@
 
 import * as Ajax from 'core/ajax';
 
+let conversationHistory = [];
+
 /**
  * Initialize the AI chat interface
  */
@@ -43,6 +45,54 @@ export const init = () => {
         // Load AI configuration on startup
         loadAIConfiguration();
 
+        
+        /**
+         * Displays a sidepanel containing a list of document paths.
+         * Shows the sidepanel with a smooth animation and populates it with the provided document paths.
+         * If no documents are provided, displays a "No documents retrieved" message.
+         * 
+         * @param {string[]} documentPaths - Array of document file paths to display in the sidepanel
+         */
+        function showDocumentSidepanel(documentPaths) {
+            const sidepanel = document.getElementById('ai-sidepanel');
+            const content = document.getElementById('ai-sidepanel-content');
+            
+            if (documentPaths && documentPaths.length > 0) {
+                const listHTML = `
+                    <ul class="ai-document-list">
+                        ${documentPaths.map(path => `<li>${path}</li>`).join('')}
+                    </ul>
+                `;
+                content.innerHTML = listHTML;
+            } else {
+                content.innerHTML = '<p>No documents retrieved.</p>';
+            }
+            
+            sidepanel.style.display = 'block';
+            setTimeout(() => sidepanel.classList.add('active'), 10);
+        }
+        
+        /**
+         * Hides the document sidepanel by removing the 'active' class and setting display to 'none' after a delay.
+         * The function first removes the 'active' class from the AI sidepanel element, then waits 300ms
+         * before completely hiding the element by setting its display style to 'none'.
+         * 
+         * @function hideDocumentSidepanel
+         * @returns {void}
+         */
+        function hideDocumentSidepanel() {
+            const sidepanel = document.getElementById('ai-sidepanel');
+            sidepanel.classList.remove('active');
+            setTimeout(() => sidepanel.style.display = 'none', 300);
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const closeButton = document.getElementById('ai-sidepanel-close');
+            if (closeButton) {
+                closeButton.addEventListener('click', hideDocumentSidepanel);
+            }
+        });
+        
         /**
          * Load AI configuration from backend
          */
@@ -226,8 +276,6 @@ export const init = () => {
          * @param {string} apiKey - The master API key for authentication
          */
         async function sendFireworksChatMessage(message, apiKey) {
-            console.log('DEBUG: sendFireworksChatMessage called with:', { message, apiKey });
-            console.log('DEBUG: About to call FastAPI at http://127.0.0.1:8000/api/chat');
             setTimeout(async function() {
                 const aiMessageDiv = document.createElement("div");
                 aiMessageDiv.className = "ai-message";
@@ -243,7 +291,10 @@ export const init = () => {
                     },
                     body: JSON.stringify({
                         "message": message,
-                        "history": [] // Empty for now, you can build conversation history later
+                        "history": conversationHistory.map(msg => ({
+                            "role": msg.role,
+                            "content": msg.content
+                        })),
                     })
                 };
                 
@@ -254,33 +305,37 @@ export const init = () => {
                         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                     }
                     // Handle Server-Sent Events (SSE) response
+                    let aiResponse = '';
                     const reader = response.body.getReader();
                     const decoder = new TextDecoder();
-                    responseSpan.textContent = '';
                 
                     while (true) {
                         const { done, value } = await reader.read();
                         if (done) break;
                         
                         const lines = decoder.decode(value, { stream: true }).split('\n');
-                        console.debug('Lines: ', lines);
                         for (const line of lines) {
                             if (!line.trim()) continue;
-                            
                             try {
                                 const data = JSON.parse(line);
-                                console.debug('Data: ', data)
                                 if (data.content === '[DONE]') break;
                                 if (data.content) {
-                                    responseSpan.textContent += data.content;
+                                    aiResponse += data.content;
+                                    fullMarkdownText += data.content;
+                                    renderProgressiveMarkdown(fullMarkdownText, responseSpan);
                                     messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                                }
+                                } 
                                 if (data.error) throw new Error(data.error);
                             } catch (e) {
                                 console.error('Parse error:', e);
                             }
                         }
                     }
+                    // Update conversation history
+                conversationHistory.push(
+                    { role: "user", content: message },
+                    { role: "assistant", content: aiResponse }
+                );
                     
                     // Convert final markdown to HTML if marked is available
                     if (typeof marked !== 'undefined' && marked.parse) {
