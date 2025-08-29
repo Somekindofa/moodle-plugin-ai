@@ -46,6 +46,54 @@ export const init = () => {
         // Load AI configuration on startup
         loadAIConfiguration();
 
+        
+        /**
+         * Displays a sidepanel containing a list of document paths.
+         * Shows the sidepanel with a smooth animation and populates it with the provided document paths.
+         * If no documents are provided, displays a "No documents retrieved" message.
+         * 
+         * @param {string[]} documentPaths - Array of document file paths to display in the sidepanel
+         */
+        function showDocumentSidepanel(documentPaths) {
+            const sidepanel = document.getElementById('ai-sidepanel');
+            const content = document.getElementById('ai-sidepanel-content');
+            
+            if (documentPaths && documentPaths.length > 0) {
+                const listHTML = `
+                    <ul class="ai-document-list">
+                        ${documentPaths.map(path => `<li>${path}</li>`).join('')}
+                    </ul>
+                `;
+                content.innerHTML = listHTML;
+            } else {
+                content.innerHTML = '<p>No documents retrieved.</p>';
+            }
+            
+            sidepanel.style.display = 'block';
+            setTimeout(() => sidepanel.classList.add('active'), 10);
+        }
+        
+        /**
+         * Hides the document sidepanel by removing the 'active' class and setting display to 'none' after a delay.
+         * The function first removes the 'active' class from the AI sidepanel element, then waits 300ms
+         * before completely hiding the element by setting its display style to 'none'.
+         * 
+         * @function hideDocumentSidepanel
+         * @returns {void}
+         */
+        function hideDocumentSidepanel() {
+            const sidepanel = document.getElementById('ai-sidepanel');
+            sidepanel.classList.remove('active');
+            setTimeout(() => sidepanel.style.display = 'none', 300);
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const closeButton = document.getElementById('ai-sidepanel-close');
+            if (closeButton) {
+                closeButton.addEventListener('click', hideDocumentSidepanel);
+            }
+        });
+        
         /**
          * Load AI configuration from backend
          */
