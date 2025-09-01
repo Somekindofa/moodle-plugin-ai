@@ -65,6 +65,8 @@ class block_aiassistant extends block_base {
                 <textarea id=\"ai-chat-input\" placeholder=\"Type your message here...\" rows=\"3\"></textarea>
                 <button id=\"ai-chat-send\" type=\"button\">Send</button>
             </div>
+
+            <button id=\"ai-sidepanel-toggle\" type=\"button\" class=\"ai-sidepanel-toggle\" title=\"Toggle document panel\">›</button>
         </div>
         
         <style>
@@ -79,6 +81,37 @@ class block_aiassistant extends block_base {
                 box-shadow: -2px 0 5px rgba(0,0,0,0.1);
                 transition: right 0.3s ease;
                 z-index: 1000;
+            }
+
+            .ai-sidepanel-toggle {
+                position: absolute;
+                top: 50%;
+                right: -1px;
+                transform: translateY(-50%);
+                width: 24px;
+                height: 40px;
+                background: #f8f9fa;
+                border: 1px solid #ddd;
+                border-left: none;
+                border-radius: 0 8px 8px 0;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 14px;
+                color: #6c757d;
+                transition: all 0.2s ease;
+                z-index: 1001;
+            }
+
+            .ai-sidepanel-toggle:hover {
+                background: #e9ecef;
+                color: #495057;
+            }
+
+            .ai-sidepanel-toggle.active {
+                right: 279px;
+                transform: translateY(-50%) rotate(180deg);
             }
             
             .ai-sidepanel.active {
@@ -173,7 +206,7 @@ class block_aiassistant extends block_base {
             }
             
             .ai-chat-messages {
-                height: 400px;
+                height: 25000px;
                 min-height: 150px;
                 max-height: 600px;
                 overflow-y: auto;
