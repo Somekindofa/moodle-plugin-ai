@@ -24,15 +24,6 @@ export const init = () => {
         const resizeHandle = document.getElementById("ai-resize-handle");
         const providerSelect = document.getElementById("ai-provider-select");
 
-        console.log('AI Chat: Elements found:', {
-            sendButton: !!sendButton,
-            chatInput: !!chatInput,
-            messagesContainer: !!messagesContainer,
-            chatContainer: !!chatContainer,
-            resizeHandle: !!resizeHandle,
-            providerSelect: !!providerSelect,
-        });
-
         if (!sendButton || !chatInput || !messagesContainer || !providerSelect) {
             console.error('AI Chat: Required elements not found');
             return;
@@ -97,21 +88,16 @@ export const init = () => {
          * Load AI configuration from backend
          */
         function loadAIConfiguration() {
-            console.log('DEBUG: Starting AJAX call to block_aiassistant_get_ai_config');
-            
             Ajax.call([{
                 methodname: 'block_aiassistant_get_ai_config',
                 args: {},
                 done: function(config) {
-                    console.log('DEBUG: AJAX success, config received:', config);
-                    
                     if (config && config.success) {
                         aiConfig = config;
                         console.log('AI Config loaded successfully:', aiConfig);
                         setupProviderUI();
                     } else {
                         console.error('Failed to load AI configuration:', config ? config.message : 'No response received');
-                        console.error('Full config object:', config);
                         aiConfig = {
                             success: false,
                             fireworks_available: false,
@@ -120,7 +106,6 @@ export const init = () => {
                     }
                 },
                 fail: function(error) {
-                    console.error('AJAX call failed:', error);
                     console.error('Error details:', {
                         name: error.name,
                         message: error.message,
@@ -149,19 +134,11 @@ export const init = () => {
          * Setup provider UI based on configuration
          */
         function setupProviderUI() {
-            console.log('DEBUG: setupProviderUI called with aiConfig:', aiConfig);
-            
             // Ensure aiConfig exists before proceeding
             if (!aiConfig) {
                 console.error('AI configuration not loaded, cannot setup provider UI');
                 return;
             }
-
-            console.log('DEBUG: aiConfig properties:', {
-                success: aiConfig.success,
-                fireworks_available: aiConfig.fireworks_available,
-            });
-
             // Clear existing options
             providerSelect.innerHTML = '';
 
@@ -297,7 +274,7 @@ export const init = () => {
                         })),
                     })
                 };
-                
+
                 try {
                     const response = await fetch(url, options);
                     
@@ -342,9 +319,7 @@ export const init = () => {
                         { role: "user", content: message },
                         { role: "assistant", content: aiResponse }
                     );
-                    
-                    
-                    
+
                 } catch (error) {
                     console.error('FastAPI call failed:', error);
                     responseSpan.textContent = 'Sorry, there was an error processing your request: ' + error.message;
@@ -371,9 +346,7 @@ export const init = () => {
                     sidepanel_toggle.classList.remove('active');
                 } else {
                     showDocumentSidepanel([
-                        '/path/to/document1.pdf',
-                        '/path/to/document2.docx',
-                        '/path/to/document3.txt'
+                        '/path/to/document1.pdf'
                     ]);
                     sidepanel_toggle.classList.add('active');
                 }
