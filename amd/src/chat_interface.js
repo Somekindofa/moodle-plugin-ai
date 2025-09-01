@@ -321,9 +321,14 @@ export const init = () => {
                                 if (data.content === '[DONE]') break;
                                 if (data.content) {
                                     aiResponse += data.content;
-                                    fullMarkdownText += data.content;
-                                    renderProgressiveMarkdown(fullMarkdownText, responseSpan);
+                                    responseSpan.textContent = aiResponse;
                                     messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                                    
+                                    // Convert final markdown to HTML if marked is available
+                                    if (typeof marked !== 'undefined' && marked.parse) {
+                                        const htmlContent = marked.parse(responseSpan.textContent);
+                                        responseSpan.innerHTML = htmlContent;
+                                    }
                                 } 
                                 if (data.error) throw new Error(data.error);
                             } catch (e) {
@@ -331,17 +336,14 @@ export const init = () => {
                             }
                         }
                     }
+
                     // Update conversation history
-                conversationHistory.push(
-                    { role: "user", content: message },
-                    { role: "assistant", content: aiResponse }
-                );
+                    conversationHistory.push(
+                        { role: "user", content: message },
+                        { role: "assistant", content: aiResponse }
+                    );
                     
-                    // Convert final markdown to HTML if marked is available
-                    if (typeof marked !== 'undefined' && marked.parse) {
-                        const htmlContent = marked.parse(responseSpan.textContent);
-                        responseSpan.innerHTML = htmlContent;
-                    }
+                    
                     
                 } catch (error) {
                     console.error('FastAPI call failed:', error);
@@ -360,6 +362,23 @@ export const init = () => {
                 sendMessage();
             }
         });
+        const sidepanel_toggle = document.getElementById('ai-sidepanel-toggle');
+        if (sidepanel_toggle) {
+            sidepanel_toggle.addEventListener('click', function() {
+                const sidepanel = document.getElementById('ai-sidepanel');
+                if (sidepanel.classList.contains('active')) {
+                    hideDocumentSidepanel();
+                    sidepanel_toggle.classList.remove('active');
+                } else {
+                    showDocumentSidepanel([
+                        '/path/to/document1.pdf',
+                        '/path/to/document2.docx',
+                        '/path/to/document3.txt'
+                    ]);
+                    sidepanel_toggle.classList.add('active');
+                }
+            });
+        }
     };
 
     // Try to initialize immediately if DOM is ready, otherwise wait for DOMContentLoaded
