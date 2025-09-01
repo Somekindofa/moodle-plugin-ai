@@ -206,7 +206,7 @@ class block_aiassistant extends block_base {
             }
             
             .ai-chat-messages {
-                height: 25000px;
+                height: 200px;
                 min-height: 150px;
                 max-height: 600px;
                 overflow-y: auto;
