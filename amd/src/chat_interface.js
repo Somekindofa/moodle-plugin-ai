@@ -245,14 +245,10 @@ export const init = () => {
         }
 
         /**
-         * *WIP/ Needs to send `apiKey` from the Moodle's server to the backend,
-         * not the other way around.*
-         * 
          * Send chat message to Fireworks API (Direct API approach)
          * @param {string} message - The message to send
-         * @param {string} apiKey - The master API key for authentication
          */
-        async function sendFireworksChatMessage(message, apiKey) {
+        async function sendFireworksChatMessage(message) {
             setTimeout(async function() {
                 const aiMessageDiv = document.createElement("div");
                 aiMessageDiv.className = "ai-message";
@@ -268,10 +264,6 @@ export const init = () => {
                     },
                     body: JSON.stringify({
                         "message": message,
-                        "history": conversationHistory.map(msg => ({
-                            "role": msg.role,
-                            "content": msg.content
-                        })),
                     })
                 };
 
