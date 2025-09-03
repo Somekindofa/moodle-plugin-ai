@@ -322,7 +322,39 @@ export const init = () => {
             }, 1000);
         }
 
+        // Setup conversation panel event listeners
+        setupConversationPanel();
+
         sendButton.addEventListener("click", sendMessage);
+        
+        /**
+         * Setup conversation panel functionality
+         */
+        function setupConversationPanel() {
+            const conversationItems = document.querySelectorAll('.ai-conversation-item');
+            
+            conversationItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    // Remove active class from all items
+                    conversationItems.forEach(i => i.classList.remove('active'));
+                    
+                    // Add active class to clicked item
+                    this.classList.add('active');
+                    
+                    // Get conversation data
+                    const conversationId = this.getAttribute('data-conversation-id');
+                    const conversationTitle = this.querySelector('.ai-conversation-title').textContent;
+                    
+                    console.log('Conversation clicked:', {
+                        id: conversationId,
+                        title: conversationTitle
+                    });
+                    
+                    // For now, just log the action - no backend integration
+                    // In the future, this would load the selected conversation
+                });
+            });
+        }
         chatInput.addEventListener("keypress", function(e) {
             if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
