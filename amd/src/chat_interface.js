@@ -256,7 +256,7 @@ export const init = () => {
                 messagesContainer.appendChild(aiMessageDiv);
                 const responseSpan = aiMessageDiv.querySelector('.response-text');
                 
-                const url = 'http://127.0.0.1:8000/api/chat'; // Adjust
+                const url = 'http://127.0.0.1:8000/api/chat';
                 const options = {
                     method: 'POST',
                     headers: {
@@ -264,7 +264,7 @@ export const init = () => {
                     },
                     body: JSON.stringify({
                         "message": message,
-                    })
+                    }) 
                 };
 
                 try {
