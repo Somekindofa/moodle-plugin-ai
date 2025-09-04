@@ -34,39 +34,55 @@ class block_aiassistant extends block_base {
         $html = "
         <script src=\"https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.js\"></script>
         <div class=\"ai-chat-container\" id=\"ai-chat-container\">
-            <div class=\"ai-provider-selection\">
-                <div class=\"ai-provider-controls\">
-                    <label for=\"ai-provider-select\">AI Provider:</label>
-
-                    <select id=\"ai-provider-select\">
-                        <option value=\"fireworks\">Fireworks.ai</option>
-                    </select>
+            <div class=\"ai-conversation-panel\" id=\"ai-conversation-panel\">
+                <div class=\"ai-conversation-header\">
+                    <h4>Conversations</h4>
+                </div>
+                <div class=\"ai-conversation-list\" id=\"ai-conversation-list\">
+                    <div class=\"ai-conversation-item\" data-conversation-id=\"1\">
+                        <span class=\"ai-conversation-title\">GBL - Analysing hand movement for pipe entrance</span>
+                    </div>
+                    <div class=\"ai-conversation-item\" data-conversation-id=\"2\">
+                        <span class=\"ai-conversation-title\">WW - Polishing wood</span>
+                    </div>
                 </div>
             </div>
+            
+            <div class=\"ai-chat-main\">
+                <div class=\"ai-provider-selection\">
+                    <div class=\"ai-provider-controls\">
+                        <label for=\"ai-provider-select\">AI Provider:</label>
 
-            <div class=\"ai-chat-messages\" id=\"ai-chat-messages\">
-                <div class=\"ai-message\">
-                    <strong>AI Assistant:</strong> Hello! How can I help you today?
+                        <select id=\"ai-provider-select\">
+                            <option value=\"fireworks\">Fireworks.ai</option>
+                        </select>
+                    </div>
                 </div>
-            </div>
 
-            <div class=\"ai-sidepanel\" id=\"ai-sidepanel\" style=\"display: none;\">
-                <div class=\"ai-sidepanel-header\">
-                    <h4>Retrieved Documents</h4>
-                    <button id=\"ai-sidepanel-close\" type=\"button\">×</button>
+                <div class=\"ai-chat-messages\" id=\"ai-chat-messages\">
+                    <div class=\"ai-message\">
+                        <strong>AI Assistant:</strong> Hello! How can I help you today?
+                    </div>
                 </div>
 
-                <div class=\"ai-sidepanel-content\" id=\"ai-sidepanel-content\">
-                    <p>No documents retrieved yet.</p>
+                <div class=\"ai-sidepanel\" id=\"ai-sidepanel\" style=\"display: none;\">
+                    <div class=\"ai-sidepanel-header\">
+                        <h4>Retrieved Documents</h4>
+                        <button id=\"ai-sidepanel-close\" type=\"button\">×</button>
+                    </div>
+
+                    <div class=\"ai-sidepanel-content\" id=\"ai-sidepanel-content\">
+                        <p>No documents retrieved yet.</p>
+                    </div>
                 </div>
-            </div>
 
-            <div class=\"ai-chat-input\">
-                <textarea id=\"ai-chat-input\" placeholder=\"Type your message here...\" rows=\"3\"></textarea>
-                <button id=\"ai-chat-send\" type=\"button\">Send</button>
-            </div>
+                <div class=\"ai-chat-input\">
+                    <textarea id=\"ai-chat-input\" placeholder=\"Type your message here...\" rows=\"3\"></textarea>
+                    <button id=\"ai-chat-send\" type=\"button\">Send</button>
+                </div>
 
-            <button id=\"ai-sidepanel-toggle\" type=\"button\" class=\"ai-sidepanel-toggle\" title=\"Toggle document panel\">›</button>
+                <button id=\"ai-sidepanel-toggle\" type=\"button\" class=\"ai-sidepanel-toggle\" title=\"Toggle document panel\">›</button>
+            </div>
         </div>
         
         <style>
@@ -176,6 +192,73 @@ class block_aiassistant extends block_base {
                 border-radius: 8px;
                 overflow: hidden;
                 margin: 0 auto;
+                display: flex;
+            }
+            
+            .ai-conversation-panel {
+                width: 15%;
+                min-width: 75px;
+                background: #f8f9fa;
+                border-right: 1px solid #ddd;
+                display: flex;
+                flex-direction: column;
+            }
+            
+            .ai-conversation-header {
+                padding: 8px 10px;
+                background: #e9ecef;
+                border-bottom: 1px solid #ddd;
+                flex-shrink: 0;
+            }
+            
+            .ai-conversation-header h4 {
+                margin: 0;
+                font-size: 12px;
+                font-weight: bold;
+                color: #333;
+            }
+            
+            .ai-conversation-list {
+                flex: 1;
+                padding: 5px;
+                overflow-y: auto;
+            }
+            
+            .ai-conversation-item {
+                padding: 8px 6px;
+                margin-bottom: 4px;
+                background: #ffffff;
+                border: 1px solid #e3e6ea;
+                border-radius: 4px;
+                cursor: pointer;
+                transition: background-color 0.2s ease, border-color 0.2s ease;
+            }
+            
+            .ai-conversation-item:hover {
+                background-color: #e7f1ff;
+                border-color: #b6d7ff;
+            }
+            
+            .ai-conversation-item:active,
+            .ai-conversation-item.active {
+                background-color: #cce7ff;
+                border-color: #80bdff;
+            }
+            
+            .ai-conversation-title {
+                font-size: 10px;
+                line-height: 1.2;
+                color: #495057;
+                display: block;
+                word-wrap: break-word;
+                overflow-wrap: break-word;
+            }
+            
+            .ai-chat-main {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                position: relative;
             }
 
             .ai-provider-selection {
