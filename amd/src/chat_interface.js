@@ -250,6 +250,8 @@ export const init = () => {
                     }
                     // Handle Server-Sent Events (SSE) response
                     let aiResponse = '';
+                    let retrievedDocuments = [];
+                    let documentsProcessed = False;
                     const reader = response.body.getReader();
                     const decoder = new TextDecoder();
                 
@@ -263,6 +265,26 @@ export const init = () => {
                             try {
                                 const data = JSON.parse(line);
                                 if (data.content === '[DONE]') break;
+
+                                if (data.content && data.documents) {
+                                    if (Array.isArray(data.documents) && data.documents.length > 0 && !documentsProcessed) {
+                                        const document_sources = data.documents.map(doc => {
+                                            return doc.metadata?.source || 'Unknown source';
+                                        });
+                                        // Update sidepanel with paths of retrieved documents
+                                        showDocumentSidepanel(document_sources);
+                                        retrievedDocuments = document_sources;
+                                        documentsProcessed = true;
+                                    }
+
+                                    if (Array.isArray(data.content)) {
+                                        for (const msg of data.content) {
+                                            
+                                        }
+                                }
+
+
+
                                 if (data.content) {
                                     aiResponse += data.content;
                                     responseSpan.textContent = aiResponse;
@@ -280,12 +302,6 @@ export const init = () => {
                             }
                         }
                     }
-
-                    // Update conversation history
-                    conversationHistory.push(
-                        { role: "user", content: message },
-                        { role: "assistant", content: aiResponse }
-                    );
 
                 } catch (error) {
                     console.error('FastAPI call failed:', error);
