@@ -133,11 +133,11 @@ class block_aiassistant extends block_base {
             
             .ai-chat-container {
                 position: relative;
-                width: 500px;
-                min-width: 300px;
-                max-width: 900px;
-                border: 1px solid #ddd;
-                border-radius: 8px;
+                width: 750px;
+                min-width: 500px;
+                max-width: 750px;
+                border: 1px solid #8a96ffff;
+                border-radius: 4px;
                 overflow: hidden;
                 margin: 0 auto;
                 display: flex;
@@ -145,7 +145,7 @@ class block_aiassistant extends block_base {
             
             .ai-conversation-panel {
                 width: 15%;
-                min-width: 150px;
+                min-width: 160px;
                 background: #f8f9fa;
                 border-right: 1px solid #ddd;
                 display: flex;
@@ -337,6 +337,8 @@ class block_aiassistant extends block_base {
                 padding: 10px;
                 display: flex;
                 gap: 5px;
+                flex-direction: row;
+                align-items: center;
             }
             
             .ai-chat-input textarea {
@@ -348,11 +350,11 @@ class block_aiassistant extends block_base {
             }
             
             .ai-chat-input button {
-                padding: 8px 16px;
+                padding: 5px 10px;
                 background: #007cba;
                 color: white;
                 border: none;
-                border-radius: 4px;
+                border-radius: 16px;
                 cursor: pointer;
             }
             
