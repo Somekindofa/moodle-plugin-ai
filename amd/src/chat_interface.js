@@ -251,7 +251,8 @@ export const init = () => {
                     // Handle Server-Sent Events (SSE) response
                     let aiResponse = '';
                     let retrievedDocuments = [];
-                    let documentsProcessed = False;
+                    let documentsProcessed = false;
+                    let last_ai_message_content = "";
                     const reader = response.body.getReader();
                     const decoder = new TextDecoder();
                 
@@ -264,38 +265,55 @@ export const init = () => {
                             if (!line.trim()) continue;
                             try {
                                 const data = JSON.parse(line);
-                                if (data.content === '[DONE]') break;
+                                if (data.messages === '[DONE]') break;
 
-                                if (data.content && data.documents) {
-                                    if (Array.isArray(data.documents) && data.documents.length > 0 && !documentsProcessed) {
-                                        const document_sources = data.documents.map(doc => {
-                                            return doc.metadata?.source || 'Unknown source';
-                                        });
-                                        // Update sidepanel with paths of retrieved documents
-                                        showDocumentSidepanel(document_sources);
-                                        retrievedDocuments = document_sources;
-                                        documentsProcessed = true;
-                                    }
-
-                                    if (Array.isArray(data.content)) {
-                                        for (const msg of data.content) {
-                                            
-                                        }
+                                // Handle documents (process once when available)
+                                if (data.documents && Array.isArray(data.documents) && data.documents.length > 0 && !documents_processed) {
+                                    const document_sources = data.documents.map(doc => {
+                                        return doc.metadata?.source || 'Unknown source';
+                                    });
+                                    showDocumentSidepanel(document_sources);
+                                    retrieved_documents = document_sources;
+                                    documents_processed = true;
                                 }
 
-
-
-                                if (data.content) {
-                                    aiResponse += data.content;
-                                    responseSpan.textContent = aiResponse;
+                                // Handle content from stream_mode="values" (array of messages)
+                                if (data.messages && Array.isArray(data.messages)) {
+                                    // Find the latest AI message in the messages array
+                                    for (const msg of data.messages) {
+                                        // Check for AIMessage type and extract content
+                                        if (msg.content && (msg.type === 'ai' || msg.__class__ === 'AIMessage' || typeof msg.content === 'string')) {
+                                            const current_ai_content = msg.content;
+                                            // Only update if the AI message content has changed
+                                            if (current_ai_content !== last_ai_message_content) {
+                                                ai_response = current_ai_content; // Replace with latest complete AI message
+                                                response_span.textContent = ai_response;
+                                                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                                                
+                                                // Convert markdown to HTML if marked is available
+                                                if (typeof marked !== 'undefined' && marked.parse) {
+                                                    const html_content = marked.parse(response_span.textContent);
+                                                    response_span.innerHTML = html_content;
+                                                }
+                                                
+                                                last_ai_message_content = current_ai_content;
+                                            }
+                                        }
+                                    }
+                                }
+                                // Fallback for stream_mode="messages" (direct string content)
+                                else if (data.messages && typeof data.messages === 'string') {
+                                    ai_response += data.messages;
+                                    response_span.textContent = ai_response;
                                     messagesContainer.scrollTop = messagesContainer.scrollHeight;
                                     
-                                    // Convert final markdown to HTML if marked is available
+                                    // Convert markdown to HTML if marked is available
                                     if (typeof marked !== 'undefined' && marked.parse) {
-                                        const htmlContent = marked.parse(responseSpan.textContent);
-                                        responseSpan.innerHTML = htmlContent;
+                                        const html_content = marked.parse(response_span.textContent);
+                                        response_span.innerHTML = html_content;
                                     }
-                                } 
+                                }
+                                
                                 if (data.error) throw new Error(data.error);
                             } catch (e) {
                                 console.error('Parse error:', e);
