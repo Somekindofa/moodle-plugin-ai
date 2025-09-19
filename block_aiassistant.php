@@ -157,6 +157,9 @@ class block_aiassistant extends block_base {
                 background: #e9ecef;
                 border-bottom: 1px solid #ddd;
                 flex-shrink: 0;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
             }
             
             .ai-conversation-header h4 {
