@@ -34,121 +34,81 @@ class block_aiassistant extends block_base {
         $html = "
         <script src=\"https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.js\"></script>
         <div class=\"ai-chat-container\" id=\"ai-chat-container\">
-            <div class=\"ai-provider-selection\">
-                <div class=\"ai-provider-controls\">
-                    <label for=\"ai-provider-select\">AI Provider:</label>
+            <div class=\"ai-conversation-panel\" id=\"ai-conversation-panel\">
+                <div class=\"ai-conversation-header\">
+                    <h4>Conversations</h4>
+                </div>
+                <div class=\"ai-conversation-list\" id=\"ai-conversation-list\">
+                    <div class=\"ai-conversation-item\" data-conversation-id=\"1\">
+                        <span class=\"ai-conversation-title\">GBL - Analysing hand movement for pipe entrance</span>
+                    </div>
+                    <div class=\"ai-conversation-item\" data-conversation-id=\"2\">
+                        <span class=\"ai-conversation-title\">WW - Polishing wood</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class=\"ai-chat-main\">
+                <div class=\"ai-provider-selection\">
+                    <div class=\"ai-provider-controls\">
+                        <label for=\"ai-provider-select\">AI Provider:</label>
 
-                    <select id=\"ai-provider-select\">
-                        <option value=\"fireworks\">Fireworks.ai</option>
-                    </select>
+                        <select id=\"ai-provider-select\">
+                            <option value=\"fireworks\">Fireworks.ai</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class=\"ai-chat-messages\" id=\"ai-chat-messages\">
+                    <div class=\"ai-message\">
+                        <strong>AI Assistant:</strong> Hello! How can I help you today?
+                    </div>
+                </div>
+
+                <div class=\"ai-chat-input\">
+                    <textarea id=\"ai-chat-input\" placeholder=\"Type your message here...\" rows=\"3\"></textarea>
+                    <button id=\"ai-chat-send\" type=\"button\">Send</button>
                 </div>
             </div>
 
-            <div class=\"ai-chat-messages\" id=\"ai-chat-messages\">
-                <div class=\"ai-message\">
-                    <strong>AI Assistant:</strong> Hello! How can I help you today?
-                </div>
-            </div>
-
-            <div class=\"ai-sidepanel\" id=\"ai-sidepanel\" style=\"display: none;\">
+            <div class=\"ai-sidepanel\" id=\"ai-sidepanel\">
                 <div class=\"ai-sidepanel-header\">
                     <h4>Retrieved Documents</h4>
-                    <button id=\"ai-sidepanel-close\" type=\"button\">×</button>
                 </div>
 
                 <div class=\"ai-sidepanel-content\" id=\"ai-sidepanel-content\">
                     <p>No documents retrieved yet.</p>
                 </div>
             </div>
-
-            <div class=\"ai-chat-input\">
-                <textarea id=\"ai-chat-input\" placeholder=\"Type your message here...\" rows=\"3\"></textarea>
-                <button id=\"ai-chat-send\" type=\"button\">Send</button>
-            </div>
-
-            <button id=\"ai-sidepanel-toggle\" type=\"button\" class=\"ai-sidepanel-toggle\" title=\"Toggle document panel\">›</button>
         </div>
         
         <style>
             .ai-sidepanel {
-                position: absolute;
-                right: -300px;
-                top: 0;
-                width: 280px;
-                height: 100%;
-                background: #fff;
-                border-left: 1px solid #ddd;
-                box-shadow: -2px 0 5px rgba(0,0,0,0.1);
-                transition: right 0.3s ease;
-                z-index: 1000;
-            }
-
-            .ai-sidepanel-toggle {
-                position: absolute;
-                top: 50%;
-                right: -1px;
-                transform: translateY(-50%);
-                width: 24px;
-                height: 40px;
+                width: 15%;
+                min-width: 150px;
                 background: #f8f9fa;
-                border: 1px solid #ddd;
-                border-left: none;
-                border-radius: 0 8px 8px 0;
-                cursor: pointer;
+                border-left: 1px solid #ddd;
                 display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 14px;
-                color: #6c757d;
-                transition: all 0.2s ease;
-                z-index: 1001;
-            }
-
-            .ai-sidepanel-toggle:hover {
-                background: #e9ecef;
-                color: #495057;
-            }
-
-            .ai-sidepanel-toggle.active {
-                right: 279px;
-                transform: translateY(-50%) rotate(180deg);
-            }
-            
-            .ai-sidepanel.active {
-                right: 0;
+                flex-direction: column;
             }
             
             .ai-sidepanel-header {
-                padding: 10px;
-                background: #f0f0f0;
+                padding: 8px 10px;
+                background: #e9ecef;
                 border-bottom: 1px solid #ddd;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
+                flex-shrink: 0;
             }
             
             .ai-sidepanel-header h4 {
                 margin: 0;
-                font-size: 14px;
+                font-size: 12px;
+                font-weight: bold;
                 color: #333;
             }
             
-            #ai-sidepanel-close {
-                background: none;
-                border: none;
-                font-size: 18px;
-                cursor: pointer;
-                padding: 0;
-                width: 24px;
-                height: 24px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
-            
             .ai-sidepanel-content {
-                padding: 10px;
-                height: calc(100% - 50px);
+                flex: 1;
+                padding: 5px;
                 overflow-y: auto;
             }
             
@@ -159,23 +119,97 @@ class block_aiassistant extends block_base {
             }
             
             .ai-document-list li {
-                padding: 8px;
-                margin-bottom: 5px;
-                background: #f9f9f9;
+                padding: 6px;
+                margin-bottom: 4px;
+                background: #ffffff;
+                border: 1px solid #e3e6ea;
                 border-radius: 4px;
-                font-size: 12px;
-                word-break: break-all;
+                font-size: 10px;
+                word-wrap: break-word;
+                overflow-wrap: break-word;
+                line-height: 1.2;
+                color: #495057;
             }
             
             .ai-chat-container {
                 position: relative;
-                width: 500px;
-                min-width: 300px;
-                max-width: 900px;
-                border: 1px solid #ddd;
-                border-radius: 8px;
+                width: 750px;
+                min-width: 500px;
+                max-width: 750px;
+                border: 1px solid #8a96ffff;
+                border-radius: 4px;
                 overflow: hidden;
                 margin: 0 auto;
+                display: flex;
+            }
+            
+            .ai-conversation-panel {
+                width: 15%;
+                min-width: 160px;
+                background: #f8f9fa;
+                border-right: 1px solid #ddd;
+                display: flex;
+                flex-direction: column;
+            }
+            
+            .ai-conversation-header {
+                padding: 8px 10px;
+                background: #e9ecef;
+                border-bottom: 1px solid #ddd;
+                flex-shrink: 0;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            
+            .ai-conversation-header h4 {
+                margin: 0;
+                font-size: 12px;
+                font-weight: bold;
+                color: #333;
+            }
+            
+            .ai-conversation-list {
+                flex: 1;
+                padding: 5px;
+                overflow-y: auto;
+            }
+            
+            .ai-conversation-item {
+                padding: 8px 6px;
+                margin-bottom: 4px;
+                background: #ffffff;
+                border: 1px solid #e3e6ea;
+                border-radius: 4px;
+                cursor: pointer;
+                transition: background-color 0.2s ease, border-color 0.2s ease;
+            }
+            
+            .ai-conversation-item:hover {
+                background-color: #e7f1ff;
+                border-color: #b6d7ff;
+            }
+            
+            .ai-conversation-item:active,
+            .ai-conversation-item.active {
+                background-color: #cce7ff;
+                border-color: #80bdff;
+            }
+            
+            .ai-conversation-title {
+                font-size: 10px;
+                line-height: 1.2;
+                color: #495057;
+                display: block;
+                word-wrap: break-word;
+                overflow-wrap: break-word;
+            }
+            
+            .ai-chat-main {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                position: relative;
             }
 
             .ai-provider-selection {
@@ -306,6 +340,8 @@ class block_aiassistant extends block_base {
                 padding: 10px;
                 display: flex;
                 gap: 5px;
+                flex-direction: row;
+                align-items: center;
             }
             
             .ai-chat-input textarea {
@@ -317,11 +353,11 @@ class block_aiassistant extends block_base {
             }
             
             .ai-chat-input button {
-                padding: 8px 16px;
+                padding: 5px 10px;
                 background: #007cba;
                 color: white;
                 border: none;
-                border-radius: 4px;
+                border-radius: 16px;
                 cursor: pointer;
             }
             
