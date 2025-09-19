@@ -252,7 +252,7 @@ export const init = () => {
                     let aiResponse = '';
                     let retrievedDocuments = [];
                     let documentsProcessed = false;
-                    let last_ai_message_content = "";
+                    let lastAIMessageContent = "";
                     const reader = response.body.getReader();
                     const decoder = new TextDecoder();
                 
@@ -265,52 +265,51 @@ export const init = () => {
                             if (!line.trim()) continue;
                             try {
                                 const data = JSON.parse(line);
-                                if (data.messages === '[DONE]') break;
+                                if (data.content === '[DONE]') break;
 
                                 // Handle documents (process once when available)
-                                if (data.documents && Array.isArray(data.documents) && data.documents.length > 0 && !documents_processed) {
+                                if (data.documents && Array.isArray(data.documents) && data.documents.length > 0 && !documentsProcessed) {
                                     const document_sources = data.documents.map(doc => {
                                         return doc.metadata?.source || 'Unknown source';
                                     });
                                     showDocumentSidepanel(document_sources);
-                                    retrieved_documents = document_sources;
-                                    documents_processed = true;
+                                    retrievedDocuments = document_sources;
+                                    documentsProcessed = true;
                                 }
 
                                 // Handle content from stream_mode="values" (array of messages)
-                                if (data.messages && Array.isArray(data.messages)) {
+                                if (data.content && Array.isArray(data.content)) {
                                     // Find the latest AI message in the messages array
-                                    for (const msg of data.messages) {
+                                    for (const msg of data.content) {
                                         // Check for AIMessage type and extract content
                                         if (msg.content && (msg.type === 'ai' || msg.__class__ === 'AIMessage' || typeof msg.content === 'string')) {
-                                            const current_ai_content = msg.content;
+                                            const currentAIContent = msg.content;
                                             // Only update if the AI message content has changed
-                                            if (current_ai_content !== last_ai_message_content) {
-                                                ai_response = current_ai_content; // Replace with latest complete AI message
-                                                response_span.textContent = ai_response;
+                                            if (currentAIContent !== lastAIMessageContent) {
+                                                aiResponse = currentAIContent; // Replace with latest complete AI message
+                                                responseSpan.textContent = aiResponse;
                                                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
                                                 
                                                 // Convert markdown to HTML if marked is available
                                                 if (typeof marked !== 'undefined' && marked.parse) {
-                                                    const html_content = marked.parse(response_span.textContent);
-                                                    response_span.innerHTML = html_content;
+                                                    const html_content = marked.parse(responseSpan.textContent);
+                                                    responseSpan.innerHTML = html_content;
                                                 }
                                                 
-                                                last_ai_message_content = current_ai_content;
+                                                lastAIMessageContent = currentAIContent;
                                             }
                                         }
                                     }
                                 }
                                 // Fallback for stream_mode="messages" (direct string content)
-                                else if (data.messages && typeof data.messages === 'string') {
-                                    ai_response += data.messages;
-                                    response_span.textContent = ai_response;
+                                else if (data.content && typeof data.content === 'string') {
+                                    aiResponse += data.content;
+                                    responseSpan.textContent = aiResponse;
                                     messagesContainer.scrollTop = messagesContainer.scrollHeight;
                                     
-                                    // Convert markdown to HTML if marked is available
                                     if (typeof marked !== 'undefined' && marked.parse) {
-                                        const html_content = marked.parse(response_span.textContent);
-                                        response_span.innerHTML = html_content;
+                                        const htmlContent = marked.parse(responseSpan.textContent);
+                                        responseSpan.innerHTML = htmlContent;
                                     }
                                 }
                                 
