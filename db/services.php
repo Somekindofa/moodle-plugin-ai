@@ -28,4 +28,12 @@ $functions = [
         'ajax'        => true,
         'loginrequired' => true,
     ],
+    'block_aiassistant_manage_conversations' => [
+        'classname'   => 'block_aiassistant\external\manage_conversations',
+        'methodname'  => 'manage_conversations',
+        'description' => 'Manage user conversations (create, list, update, delete)',
+        'type'        => 'write',
+        'ajax'        => true,
+        'loginrequired' => true,
+    ],
 ];
