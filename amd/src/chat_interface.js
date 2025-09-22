@@ -38,14 +38,13 @@ export const init = () => {
 
         
         /**
-         * Displays a sidepanel containing a list of document paths.
-         * Shows the sidepanel with a smooth animation and populates it with the provided document paths.
+         * Displays a list of document paths in the sidepanel.
+         * Populates the sidepanel with the provided document paths.
          * If no documents are provided, displays a "No documents retrieved" message.
          * 
          * @param {string[]} documentPaths - Array of document file paths to display in the sidepanel
          */
         function showDocumentSidepanel(documentPaths) {
-            const sidepanel = document.getElementById('ai-sidepanel');
             const content = document.getElementById('ai-sidepanel-content');
             
             if (documentPaths && documentPaths.length > 0) {
@@ -58,31 +57,7 @@ export const init = () => {
             } else {
                 content.innerHTML = '<p>No documents retrieved.</p>';
             }
-            
-            sidepanel.style.display = 'block';
-            setTimeout(() => sidepanel.classList.add('active'), 10);
         }
-        
-        /**
-         * Hides the document sidepanel by removing the 'active' class and setting display to 'none' after a delay.
-         * The function first removes the 'active' class from the AI sidepanel element, then waits 300ms
-         * before completely hiding the element by setting its display style to 'none'.
-         * 
-         * @function hideDocumentSidepanel
-         * @returns {void}
-         */
-        function hideDocumentSidepanel() {
-            const sidepanel = document.getElementById('ai-sidepanel');
-            sidepanel.classList.remove('active');
-            setTimeout(() => sidepanel.style.display = 'none', 300);
-        }
-        
-        document.addEventListener('DOMContentLoaded', function() {
-            const closeButton = document.getElementById('ai-sidepanel-close');
-            if (closeButton) {
-                closeButton.addEventListener('click', hideDocumentSidepanel);
-            }
-        });
         
         /**
          * Load AI configuration from backend
@@ -275,6 +250,9 @@ export const init = () => {
                     }
                     // Handle Server-Sent Events (SSE) response
                     let aiResponse = '';
+                    let retrievedDocuments = [];
+                    let documentsProcessed = false;
+                    let lastAIMessageContent = "";
                     const reader = response.body.getReader();
                     const decoder = new TextDecoder();
                 
@@ -288,29 +266,59 @@ export const init = () => {
                             try {
                                 const data = JSON.parse(line);
                                 if (data.content === '[DONE]') break;
-                                if (data.content) {
+
+                                // Handle documents (process once when available)
+                                if (data.documents && Array.isArray(data.documents) && data.documents.length > 0 && !documentsProcessed) {
+                                    const document_sources = data.documents.map(doc => {
+                                        return doc.metadata?.source || 'Unknown source';
+                                    });
+                                    showDocumentSidepanel(document_sources);
+                                    retrievedDocuments = document_sources;
+                                    documentsProcessed = true;
+                                }
+
+                                // Handle content from stream_mode="values" (array of messages)
+                                if (data.content && Array.isArray(data.content)) {
+                                    // Find the latest AI message in the messages array
+                                    for (const msg of data.content) {
+                                        // Check for AIMessage type and extract content
+                                        if (msg.content && (msg.type === 'ai' || msg.__class__ === 'AIMessage' || typeof msg.content === 'string')) {
+                                            const currentAIContent = msg.content;
+                                            // Only update if the AI message content has changed
+                                            if (currentAIContent !== lastAIMessageContent) {
+                                                aiResponse = currentAIContent; // Replace with latest complete AI message
+                                                responseSpan.textContent = aiResponse;
+                                                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                                                
+                                                // Convert markdown to HTML if marked is available
+                                                if (typeof marked !== 'undefined' && marked.parse) {
+                                                    const html_content = marked.parse(responseSpan.textContent);
+                                                    responseSpan.innerHTML = html_content;
+                                                }
+                                                
+                                                lastAIMessageContent = currentAIContent;
+                                            }
+                                        }
+                                    }
+                                }
+                                // Fallback for stream_mode="messages" (direct string content)
+                                else if (data.content && typeof data.content === 'string') {
                                     aiResponse += data.content;
                                     responseSpan.textContent = aiResponse;
                                     messagesContainer.scrollTop = messagesContainer.scrollHeight;
                                     
-                                    // Convert final markdown to HTML if marked is available
                                     if (typeof marked !== 'undefined' && marked.parse) {
                                         const htmlContent = marked.parse(responseSpan.textContent);
                                         responseSpan.innerHTML = htmlContent;
                                     }
-                                } 
+                                }
+                                
                                 if (data.error) throw new Error(data.error);
                             } catch (e) {
                                 console.error('Parse error:', e);
                             }
                         }
                     }
-
-                    // Update conversation history
-                    conversationHistory.push(
-                        { role: "user", content: message },
-                        { role: "assistant", content: aiResponse }
-                    );
 
                 } catch (error) {
                     console.error('FastAPI call failed:', error);
@@ -322,28 +330,45 @@ export const init = () => {
             }, 1000);
         }
 
+        // Setup conversation panel event listeners
+        setupConversationPanel();
+
         sendButton.addEventListener("click", sendMessage);
+        
+        /**
+         * Setup conversation panel functionality
+         */
+        function setupConversationPanel() {
+            const conversationItems = document.querySelectorAll('.ai-conversation-item');
+            
+            conversationItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    // Remove active class from all items
+                    conversationItems.forEach(i => i.classList.remove('active'));
+                    
+                    // Add active class to clicked item
+                    this.classList.add('active');
+                    
+                    // Get conversation data
+                    const conversationId = this.getAttribute('data-conversation-id');
+                    const conversationTitle = this.querySelector('.ai-conversation-title').textContent;
+                    
+                    console.log('Conversation clicked:', {
+                        id: conversationId,
+                        title: conversationTitle
+                    });
+                    
+                    // For now, just log the action - no backend integration
+                    // In the future, this would load the selected conversation
+                });
+            });
+        }
         chatInput.addEventListener("keypress", function(e) {
             if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 sendMessage();
             }
         });
-        const sidepanel_toggle = document.getElementById('ai-sidepanel-toggle');
-        if (sidepanel_toggle) {
-            sidepanel_toggle.addEventListener('click', function() {
-                const sidepanel = document.getElementById('ai-sidepanel');
-                if (sidepanel.classList.contains('active')) {
-                    hideDocumentSidepanel();
-                    sidepanel_toggle.classList.remove('active');
-                } else {
-                    showDocumentSidepanel([
-                        '/path/to/document1.pdf'
-                    ]);
-                    sidepanel_toggle.classList.add('active');
-                }
-            });
-        }
     };
 
     // Try to initialize immediately if DOM is ready, otherwise wait for DOMContentLoaded
