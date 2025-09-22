@@ -7,8 +7,6 @@
 
 import * as Ajax from 'core/ajax';
 
-let conversationHistory = [];
-
 /**
  * Initialize the AI chat interface
  */
@@ -16,15 +14,14 @@ export const init = () => {
     // Function to initialize the chat interface
     const initializeChat = () => {
         console.log('AI Chat: Initializing...');
-        
+
         const sendButton = document.getElementById("ai-chat-send");
         const chatInput = document.getElementById("ai-chat-input");
         const messagesContainer = document.getElementById("ai-chat-messages");
-        const chatContainer = document.getElementById("ai-chat-container");
-        const resizeHandle = document.getElementById("ai-resize-handle");
         const providerSelect = document.getElementById("ai-provider-select");
+        const newConversationBtn = document.getElementById("ai-new-conversation-btn");
 
-        if (!sendButton || !chatInput || !messagesContainer || !providerSelect) {
+        if (!sendButton || !chatInput || !messagesContainer || !providerSelect || !newConversationBtn) {
             console.error('AI Chat: Required elements not found');
             return;
         }
@@ -32,11 +29,12 @@ export const init = () => {
         // Global configuration storage
         let aiConfig = null;
         let currentProvider = 'fireworks';
+        let currentConversationThreadId = null;
 
         // Load AI configuration on startup
         loadAIConfiguration();
+        loadExistingConversations();
 
-        
         /**
          * Displays a list of document paths in the sidepanel.
          * Populates the sidepanel with the provided document paths.
@@ -46,7 +44,7 @@ export const init = () => {
          */
         function showDocumentSidepanel(documentPaths) {
             const content = document.getElementById('ai-sidepanel-content');
-            
+
             if (documentPaths && documentPaths.length > 0) {
                 const listHTML = `
                     <ul class="ai-document-list">
@@ -58,7 +56,59 @@ export const init = () => {
                 content.innerHTML = '<p>No documents retrieved.</p>';
             }
         }
-        
+
+        /**
+         * Load existing conversations from Moodle database
+         */
+        function loadExistingConversations() {
+            Ajax.call([{
+                methodname: 'block_aiassistant_manage_conversations',
+                args: {
+                    action: 'list'
+                },
+                done: function (result) {
+                    if (result && result.success && result.conversations) {
+                        console.log('Existing conversations loaded:', result.conversations);
+                        populateConversationsList(result.conversations);
+                    } else {
+                        console.log('No existing conversations found or failed to load:', result ? result.message : 'No response received');
+                    }
+                },
+                fail: function (error) {
+                    console.error('Failed to load existing conversations:', error);
+                }
+            }]);
+        }
+
+        /**
+         * Populate the conversations list with existing conversations
+         */
+        function populateConversationsList(conversations) {
+            const conversationList = document.getElementById('ai-conversation-list');
+
+            // Clear existing items
+            conversationList.innerHTML = '';
+
+            // Add each conversation to the list
+            conversations.forEach(conversation => {
+                const conversationItem = document.createElement('div');
+                conversationItem.className = 'ai-conversation-item';
+                conversationItem.setAttribute('data-conversation-id', conversation.conversation_id);
+
+                const titleSpan = document.createElement('span');
+                titleSpan.className = 'ai-conversation-title';
+                titleSpan.textContent = conversation.title;
+
+                conversationItem.appendChild(titleSpan);
+                conversationList.appendChild(conversationItem);
+
+                // Add click listener to the item
+                setupConversationItemListener(conversationItem);
+            });
+
+            console.log(`Populated ${conversations.length} conversations in the list`);
+        }
+
         /**
          * Load AI configuration from backend
          */
@@ -66,10 +116,10 @@ export const init = () => {
             Ajax.call([{
                 methodname: 'block_aiassistant_get_ai_config',
                 args: {},
-                done: function(config) {
+                done: function (config) {
                     if (config && config.success) {
                         aiConfig = config;
-                        console.log('AI Config loaded successfully:', aiConfig);
+                        console.log('AI Config loaded successfully.');
                         setupProviderUI();
                     } else {
                         console.error('Failed to load AI configuration:', config ? config.message : 'No response received');
@@ -80,7 +130,7 @@ export const init = () => {
                         showConfigurationError('Failed to load AI configuration. Please check plugin settings.');
                     }
                 },
-                fail: function(error) {
+                fail: function (error) {
                     console.error('Error details:', {
                         name: error.name,
                         message: error.message,
@@ -137,7 +187,7 @@ export const init = () => {
                     fireworksOption.disabled = true;
                     providerSelect.appendChild(fireworksOption);
                 }
-                
+
                 showConfigurationError('No AI providers are configured. Please check plugin settings.');
                 return;
             }
@@ -169,6 +219,25 @@ export const init = () => {
                 return;
             }
 
+            // If no conversation is selected, create a new one
+            if (!currentConversationThreadId) {
+                createNewConversation().then(() => {
+                    // After creating conversation, send the message
+                    sendMessageWithConversation(message, currentConversationThreadId);
+                }).catch(error => {
+                    console.error('Failed to create new conversation:', error);
+                    showConfigurationError('Failed to create new conversation. Please try again.');
+                });
+                return;
+            }
+
+            sendMessageWithConversation(message, currentConversationThreadId);
+        }
+
+        /**
+         * Send message with existing conversation
+         */
+        function sendMessageWithConversation(message, currentConversationThreadId) {
             // Add user message
             const userMessageDiv = document.createElement("div");
             userMessageDiv.className = "user-message";
@@ -188,12 +257,12 @@ export const init = () => {
             Ajax.call([{
                 methodname: 'block_aiassistant_get_user_credentials',
                 args: { provider: currentProvider },
-                done: function(credentials) {
+                done: function (credentials) {
                     // Remove loading message
                     messagesContainer.removeChild(loadingDiv);
 
                     if (credentials.success) {
-                        sendFireworksChatMessage(message, credentials.api_key);
+                        sendFireworksChatMessage(message, currentConversationThreadId);
                     } else {
                         const errorDiv = document.createElement("div");
                         errorDiv.className = "ai-message";
@@ -201,7 +270,7 @@ export const init = () => {
                         messagesContainer.appendChild(errorDiv);
                     }
                 },
-                fail: function(error) {
+                fail: function (error) {
                     // Remove loading message
                     if (messagesContainer.contains(loadingDiv)) {
                         messagesContainer.removeChild(loadingDiv);
@@ -223,14 +292,14 @@ export const init = () => {
          * Send chat message to Fireworks API (Direct API approach)
          * @param {string} message - The message to send
          */
-        async function sendFireworksChatMessage(message) {
-            setTimeout(async function() {
+        async function sendFireworksChatMessage(message, currentConversationThreadId) {
+            setTimeout(async function () {
                 const aiMessageDiv = document.createElement("div");
                 aiMessageDiv.className = "ai-message";
                 aiMessageDiv.innerHTML = "<strong>AI Assistant (Fireworks):</strong> <span class='response-text'></span>";
                 messagesContainer.appendChild(aiMessageDiv);
                 const responseSpan = aiMessageDiv.querySelector('.response-text');
-                
+
                 const url = 'http://127.0.0.1:8000/api/chat';
                 const options = {
                     method: 'POST',
@@ -239,12 +308,13 @@ export const init = () => {
                     },
                     body: JSON.stringify({
                         "message": message,
-                    }) 
+                        "conversation_thread_id": currentConversationThreadId
+                    })
                 };
 
                 try {
                     const response = await fetch(url, options);
-                    
+
                     if (!response.ok) {
                         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                     }
@@ -255,11 +325,11 @@ export const init = () => {
                     let lastAIMessageContent = "";
                     const reader = response.body.getReader();
                     const decoder = new TextDecoder();
-                
+
                     while (true) {
                         const { done, value } = await reader.read();
                         if (done) break;
-                        
+
                         const lines = decoder.decode(value, { stream: true }).split('\n');
                         for (const line of lines) {
                             if (!line.trim()) continue;
@@ -289,13 +359,13 @@ export const init = () => {
                                                 aiResponse = currentAIContent; // Replace with latest complete AI message
                                                 responseSpan.textContent = aiResponse;
                                                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                                                
+
                                                 // Convert markdown to HTML if marked is available
                                                 if (typeof marked !== 'undefined' && marked.parse) {
                                                     const html_content = marked.parse(responseSpan.textContent);
                                                     responseSpan.innerHTML = html_content;
                                                 }
-                                                
+
                                                 lastAIMessageContent = currentAIContent;
                                             }
                                         }
@@ -306,13 +376,13 @@ export const init = () => {
                                     aiResponse += data.content;
                                     responseSpan.textContent = aiResponse;
                                     messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                                    
+
                                     if (typeof marked !== 'undefined' && marked.parse) {
                                         const htmlContent = marked.parse(responseSpan.textContent);
                                         responseSpan.innerHTML = htmlContent;
                                     }
                                 }
-                                
+
                                 if (data.error) throw new Error(data.error);
                             } catch (e) {
                                 console.error('Parse error:', e);
@@ -330,40 +400,141 @@ export const init = () => {
             }, 1000);
         }
 
+        /**
+         * Generate a UUID for new conversations
+         */
+        function generateUUID() {
+            if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+                return crypto.randomUUID();
+            }
+            // Fallback UUID generation for older browsers
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+                const r = Math.random() * 16 | 0;
+                const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        /**
+         * Create a new conversation
+         */
+        async function createNewConversation() {
+            const conversationId = generateUUID();
+            const conversationTitle = `New Conversation ${new Date().toLocaleTimeString()}`;
+
+            // Create new conversation DOM element
+            const conversationList = document.getElementById('ai-conversation-list');
+            const newConversationItem = document.createElement('div');
+            newConversationItem.className = 'ai-conversation-item';
+            newConversationItem.setAttribute('data-conversation-id', conversationId);
+
+            const titleSpan = document.createElement('span');
+            titleSpan.className = 'ai-conversation-title';
+            titleSpan.textContent = conversationTitle;
+
+            newConversationItem.appendChild(titleSpan);
+            conversationList.appendChild(newConversationItem);
+
+            // Remove active class from all items and set this one as active
+            const allItems = document.querySelectorAll('.ai-conversation-item');
+            allItems.forEach(item => item.classList.remove('active'));
+            newConversationItem.classList.add('active');
+
+            // Set as current conversation
+            currentConversationThreadId = conversationId;
+
+            // Clear chat messages
+            messagesContainer.innerHTML = '<div class="ai-message"><strong>AI Assistant:</strong> Hello! How can I help you today?</div>';
+
+            // Add click listener to the new item
+            setupConversationItemListener(newConversationItem);
+
+            // Create conversation in Moodle database
+            try {
+                await createConversationInMoodle(conversationId, conversationTitle);
+                console.log('New conversation created:', conversationId);
+            } catch (error) {
+                console.error('Failed to create conversation in Moodle:', error);
+                const errorDiv = document.createElement("div");
+                errorDiv.className = "ai-message";
+                errorDiv.innerHTML = `<strong>AI Assistant:</strong> <em>Warning: Could not save conversation. Messages may not be saved.</em>`;
+                messagesContainer.appendChild(errorDiv);
+            }
+        }
+
+        /**
+         * Create conversation in Moodle database via Ajax
+         */
+        async function createConversationInMoodle(conversationId, conversationTitle) {
+            return new Promise((resolve, reject) => {
+                Ajax.call([{
+                    methodname: 'block_aiassistant_manage_conversations',
+                    args: {
+                        action: 'create',
+                        conversation_id: conversationId,
+                        title: conversationTitle
+                    },
+                    done: function (result) {
+                        if (result.success) {
+                            resolve(result);
+                        } else {
+                            reject(new Error(result.message || 'Failed to create conversation'));
+                        }
+                    },
+                    fail: function (error) {
+                        reject(error);
+                    }
+                }]);
+            });
+        }
+
+        /**
+         * Setup event listener for a single conversation item
+         */
+        function setupConversationItemListener(item) {
+            item.addEventListener('click', function () {
+                // Remove active class from all items
+                const allItems = document.querySelectorAll('.ai-conversation-item');
+                allItems.forEach(i => i.classList.remove('active'));
+
+                // Add active class to clicked item
+                this.classList.add('active');
+
+                // Get conversation data
+                const conversationId = this.getAttribute('data-conversation-id');
+                const conversationTitle = this.querySelector('.ai-conversation-title').textContent;
+
+                // Set as current conversation
+                currentConversationThreadId = conversationId;
+
+                console.log('Conversation selected:', {
+                    id: conversationId,
+                    title: conversationTitle
+                });
+
+                // Clear messages and show welcome message for this conversation
+                messagesContainer.innerHTML = '<div class="ai-message"><strong>AI Assistant:</strong> Hello! How can I help you today?</div>';
+            });
+        }
+
         // Setup conversation panel event listeners
         setupConversationPanel();
 
+        // Add event listeners
+        newConversationBtn.addEventListener('click', createNewConversation);
         sendButton.addEventListener("click", sendMessage);
-        
+
         /**
          * Setup conversation panel functionality
          */
         function setupConversationPanel() {
             const conversationItems = document.querySelectorAll('.ai-conversation-item');
-            
+
             conversationItems.forEach(item => {
-                item.addEventListener('click', function() {
-                    // Remove active class from all items
-                    conversationItems.forEach(i => i.classList.remove('active'));
-                    
-                    // Add active class to clicked item
-                    this.classList.add('active');
-                    
-                    // Get conversation data
-                    const conversationId = this.getAttribute('data-conversation-id');
-                    const conversationTitle = this.querySelector('.ai-conversation-title').textContent;
-                    
-                    console.log('Conversation clicked:', {
-                        id: conversationId,
-                        title: conversationTitle
-                    });
-                    
-                    // For now, just log the action - no backend integration
-                    // In the future, this would load the selected conversation
-                });
+                setupConversationItemListener(item);
             });
         }
-        chatInput.addEventListener("keypress", function(e) {
+        chatInput.addEventListener("keypress", function (e) {
             if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 sendMessage();
