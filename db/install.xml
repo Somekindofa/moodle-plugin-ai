@@ -22,5 +22,26 @@
         <INDEX NAME="fireworks_key_id" UNIQUE="true" FIELDS="fireworks_key_id"/>
       </INDEXES>
     </TABLE>
+    <TABLE NAME="block_aiassistant_conversations" COMMENT="Stores conversation metadata for each user">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="conversation_id" TYPE="char" LENGTH="255" NOTNULL="true"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true"/>
+        <FIELD NAME="title" TYPE="char" LENGTH="255" NOTNULL="true"/>
+        <FIELD NAME="created_time" TYPE="int" LENGTH="10" NOTNULL="true"/>
+        <FIELD NAME="last_updated" TYPE="int" LENGTH="10" NOTNULL="true"/>
+        <FIELD NAME="is_active" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1"/>
+        <FIELD NAME="metadata" TYPE="text" NOTNULL="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="userid_key" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="conversation_id_unique" UNIQUE="true" FIELDS="conversation_id"/>
+        <INDEX NAME="userid_active" UNIQUE="false" FIELDS="userid, is_active"/>
+        <INDEX NAME="userid_last_updated" UNIQUE="false" FIELDS="userid, last_updated"/>
+      </INDEXES>
+    </TABLE>
   </TABLES>
 </XMLDB>
