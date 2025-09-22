@@ -2,51 +2,82 @@
 
 ## Architecture Overview
 
-This is a **Moodle block plugin** (`block_aiassistant`) that provides AI chat functionality using the Fireworks AI API. The plugin follows Moodle's standard plugin architecture with secure API key management and modern ES6/AMD JavaScript.
+This is a **Moodle block plugin** (`block_aiassistant`) providing AI chat functionality with **dual provider support** (Fireworks AI and Claude) and **RAG capabilities**. The plugin follows Moodle's standard plugin architecture with secure API key management and modern ES6/AMD JavaScript.
 
 ### Key Components
 
-- **Block Class** (`block_aiassistant.php`): Main Moodle block that renders chat interface HTML and loads AMD modules
-- **External API** (`classes/external/get_user_credentials.php`): AJAX endpoint for secure API key retrieval
-- **Credential Service** (`classes/credential_service.php`): Manages Fireworks AI API key generation per user
-- **Frontend** (`amd/src/chat_interface.js`): ES6 module for chat UI, transpiled to AMD via Babel/Grunt
+- **Block Class** (`block_aiassistant.php`): Main Moodle block that renders chat interface HTML with conversation panel and sidepanel for retrieved documents
+- **External APIs** (`classes/external/`): Three AJAX endpoints for credentials, config, and Claude proxy
+- **Credential Service** (`classes/credential_service.php`): Unified service managing both Fireworks per-user keys and shared Claude keys
+- **Frontend** (`amd/src/chat_interface.js`): ES6 module handling provider selection, streaming responses, and RAG document display
+- **RAG Backend** (`test/app.py`): Standalone Python service using LangGraph/LangChain for document retrieval
 
 ## Development Workflow
 
 ### JavaScript Development
 - **Source**: Edit `amd/src/chat_interface.js` in ES6 syntax
-- **Build**: Run `npx grunt dev` to start file watching - auto-transpiles ES6→AMD and minifies
+- **Build**: Run `npx grunt dev` to start file watching - auto-transpiles ES6→AMD and minifies  
 - **Output**: Transpiled AMD modules go to `amd/build/` (what Moodle actually loads)
 - **Loading**: Moodle loads via `$PAGE->requires->js_call_amd('block_aiassistant/chat_interface', 'init')`
 
-### Key Patterns
+### RAG Development
+- **Backend**: Python FastAPI service at `http://127.0.0.1:8000/api/chat` with SSE streaming
+- **Testing**: Run `test/app.py` directly for Gradio interface with file upload and database management
+- **Integration**: Frontend calls external Python service, displays retrieved docs in sidepanel
 
-**AJAX Communication**: Frontend calls `Ajax.call([{methodname: 'block_aiassistant_get_user_credentials', ...}])` to get API keys, then directly calls Fireworks AI API
+## Provider Architecture
 
-**Error Handling**: External API methods return structured responses with `success`, `message`, and data fields. Always check `credentials.success` before proceeding.
+**Dual Provider Model**: Plugin supports both Fireworks (per-user keys) and Claude (shared admin key)
 
-**Database**: Single table `block_aiassistant_keys` stores per-user API keys with `userid`, `fireworks_api_key`, `is_active` fields
+**Configuration Detection**: `get_ai_config` endpoint checks which providers are configured and returns available models
 
-**Naming Convention**: Use snake_case for all identifiers (functions, variables, config keys) - e.g., `fireworks_account_id`, `get_user_credentials`
+**Frontend Adaptation**: UI dynamically shows/hides providers based on backend configuration
+
+**API Approaches**:
+- Fireworks: Direct frontend calls to Fireworks API (requires per-user key generation via `firectl`)
+- Claude: Server-side proxy via `send_claude_message` endpoint (uses shared admin key)
+
+## Key Patterns
+
+**AJAX Communication**: Frontend calls multiple endpoints - `get_ai_config` for provider detection, `get_user_credentials` for Fireworks keys, `send_claude_message` for Claude proxy
+
+**Error Handling**: All external API methods return structured responses with `success`, `message`, and optional data fields. Always check response.success before proceeding.
+
+**Database Schema**: Single table `block_aiassistant_keys` with fields:
+- `userid`, `fireworks_api_key`, `fireworks_key_id` (per-user Fireworks credentials)  
+- `claude_api_key` (shared admin key, tracked per user for usage)
+- `display_name`, `created_time`, `last_used`, `is_active`
+
+**Streaming Responses**: Frontend handles Server-Sent Events from RAG backend, displays documents in sidepanel and streams AI responses with markdown rendering
+
+**Naming Convention**: Use snake_case for all identifiers (functions, variables, config keys) - e.g., `claude_default_model`, `send_claude_message`
 
 ## Configuration Requirements
 
-Plugin requires three admin settings in Site Administration:
-- `fireworks_account_id`: Fireworks account identifier  
-- `fireworks_service_account_id`: Service account for API key generation
-- `fireworks_api_token`: Admin token for creating user API keys
+**Fireworks Setup** (Optional): `fireworks_api_key` admin setting OR legacy per-user approach requiring:
+- `fireworks_account_id`, `fireworks_service_account_id` with `firectl` binary at `/usr/local/bin/firectl`
+
+**Claude Setup** (Optional): `claude_api_key` admin setting for shared Claude access
+
+**RAG Setup**: Python backend service must run separately for document retrieval functionality
 
 ## Security Model
 
-- Each Moodle user gets individual Fireworks API key (stored in `block_aiassistant_keys`)
-- Keys generated on-demand via `credential_service->generate_user_api_key()`
-- Frontend makes direct calls to Fireworks API (not proxied through Moodle)
-- All AJAX endpoints require `loginrequired => true`
+**Fireworks**: Either shared admin key OR individual per-user keys generated via `firectl` command-line tool
+**Claude**: Shared admin API key, usage tracked per user in database  
+**API Endpoints**: All require `loginrequired => true` and proper context validation
+**External Service**: RAG backend assumed to be on localhost:8000 (no authentication currently)
 
-## Future Architecture Notes
+## UI Architecture
 
-- Chat interface will evolve into full RAG system with retrieved content display
-- Current implementation focuses on basic chat functionality as foundation
+**Three-Panel Layout**:
+- **Left**: Conversation history panel (static mockup, no backend integration yet)
+- **Center**: Chat interface with provider selection dropdown and message history
+- **Right**: Retrieved documents sidepanel (populated by RAG backend during chat)
+
+**Provider Selection**: Dropdown dynamically populated based on `get_ai_config` response, shows "Not configured" for unavailable providers
+
+**Markdown Rendering**: Uses `marked.js` library loaded via CDN to render AI responses with proper formatting
 
 ## File Structure Conventions
 
@@ -59,6 +90,7 @@ db/services.php               # AJAX service definitions
 amd/src/                      # ES6 source files
 amd/build/                    # Transpiled AMD outputs (auto-generated)
 lang/en/                      # Language strings
+test/app.py                   # Standalone RAG backend service
 ```
 
 ## Common Tasks
@@ -68,3 +100,7 @@ lang/en/                      # Language strings
 **Debug JavaScript**: Check browser console for "AI Chat: Initializing..." and element detection logs
 
 **Update dependencies**: Modify `package.json`, run `npm install`, restart `npx grunt dev`
+
+**Test RAG functionality**: Run `python test/app.py` to start Gradio interface with file upload and database management
+
+**Add new AI provider**: Extend `get_ai_config` endpoint, add provider detection logic, update frontend provider selection
