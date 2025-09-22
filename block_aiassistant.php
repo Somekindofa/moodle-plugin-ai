@@ -1,5 +1,6 @@
 <?php
 // This file is part of Moodle - http://moodle.org/
+    
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -37,14 +38,10 @@ class block_aiassistant extends block_base {
             <div class=\"ai-conversation-panel\" id=\"ai-conversation-panel\">
                 <div class=\"ai-conversation-header\">
                     <h4>Conversations</h4>
+                    <button id=\"ai-new-conversation-btn\" class=\"ai-new-conversation-btn\" type=\"button\" title=\"New Conversation\">+</button>
                 </div>
                 <div class=\"ai-conversation-list\" id=\"ai-conversation-list\">
-                    <div class=\"ai-conversation-item\" data-conversation-id=\"1\">
-                        <span class=\"ai-conversation-title\">GBL - Analysing hand movement for pipe entrance</span>
-                    </div>
-                    <div class=\"ai-conversation-item\" data-conversation-id=\"2\">
-                        <span class=\"ai-conversation-title\">WW - Polishing wood</span>
-                    </div>
+                    <!-- Conversations will be created dynamically via JavaScript -->
                 </div>
             </div>
             
@@ -167,6 +164,27 @@ class block_aiassistant extends block_base {
                 font-size: 12px;
                 font-weight: bold;
                 color: #333;
+            }
+            
+            .ai-new-conversation-btn {
+                background: #007cba;
+                color: white;
+                border: none;
+                border-radius: 50%;
+                width: 20px;
+                height: 20px;
+                font-size: 14px;
+                font-weight: bold;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                line-height: 1;
+                transition: background-color 0.2s ease;
+            }
+            
+            .ai-new-conversation-btn:hover {
+                background: #005a87;
             }
             
             .ai-conversation-list {
