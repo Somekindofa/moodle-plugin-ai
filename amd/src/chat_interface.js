@@ -238,11 +238,19 @@ export const init = () => {
          * Send message with existing conversation
          */
         function sendMessageWithConversation(message, currentConversationThreadId) {
+            console.log('sendMessageWithConversation called with:', {
+                message: message,
+                conversationId: currentConversationThreadId
+            });
+            
             // Add user message
             const userMessageDiv = document.createElement("div");
             userMessageDiv.className = "user-message";
             userMessageDiv.innerHTML = "<strong>You:</strong> " + message;
             messagesContainer.appendChild(userMessageDiv);
+
+            // Save user message to database
+            saveMessageToDatabase(currentConversationThreadId, 'user', message);
 
             // Clear input
             chatInput.value = "";
@@ -389,11 +397,27 @@ export const init = () => {
                             }
                         }
                     }
+                    // Save AI response to database if we have content
+                    if (aiResponse && aiResponse.trim()) {
+                        console.log('Attempting to save AI response:', {
+                            conversationId: currentConversationThreadId,
+                            responseLength: aiResponse.length,
+                            responsePreview: aiResponse.substring(0, 100) + '...'
+                        });
+                        saveMessageToDatabase(currentConversationThreadId, 'ai', aiResponse);
+                    } else {
+                        console.log('No AI response to save:', {
+                            aiResponse: aiResponse,
+                            conversationId: currentConversationThreadId
+                        });
+                    }
 
                 } catch (error) {
                     console.error('FastAPI call failed:', error);
                     responseSpan.textContent = 'Sorry, there was an error processing your request: ' + error.message;
                 }
+
+                
 
                 // Final scroll to bottom
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
@@ -463,6 +487,73 @@ export const init = () => {
         }
 
         /**
+         * Save a message to the database
+         */
+        function saveMessageToDatabase(conversationId, messageType, content, metadata = '') {
+            console.log('saveMessageToDatabase called with:', {
+                conversationId: conversationId,
+                messageType: messageType,
+                content: content.substring(0, 100) + (content.length > 100 ? '...' : ''),
+                metadata: metadata
+            });
+            
+            Ajax.call([{
+                methodname: 'block_aiassistant_manage_messages',
+                args: {
+                    action: 'save',
+                    conversation_id: conversationId,
+                    message_type: messageType,
+                    content: content,
+                    metadata: metadata
+                },
+                done: function (result) {
+                    console.log('AJAX response received:', result);
+                    if (result.success) {
+                        console.log(`Message saved successfully: ${messageType} message with ID ${result.message_id}`);
+                    } else {
+                        console.error('Failed to save message:', result.message);
+                    }
+                },
+                fail: function (error) {
+                    console.error('Failed to save message to database:', error);
+                    console.error('Error details:', {
+                        name: error.name,
+                        message: error.message,
+                        stack: error.stack
+                    });
+                }
+            }]);
+        }
+
+        /**
+         * Load messages for a conversation from database
+         */
+        function loadMessagesFromDatabase(conversationId) {
+            return new Promise((resolve, reject) => {
+                Ajax.call([{
+                    methodname: 'block_aiassistant_manage_messages',
+                    args: {
+                        action: 'load',
+                        conversation_id: conversationId
+                    },
+                    done: function (result) {
+                        if (result.success) {
+                            console.log(`Loaded ${result.messages.length} messages for conversation ${conversationId}`);
+                            resolve(result.messages);
+                        } else {
+                            console.error('Failed to load messages:', result.message);
+                            reject(new Error(result.message));
+                        }
+                    },
+                    fail: function (error) {
+                        console.error('Failed to load messages from database:', error);
+                        reject(error);
+                    }
+                }]);
+            });
+        }
+
+        /**
          * Create conversation in Moodle database via Ajax
          */
         async function createConversationInMoodle(conversationId, conversationTitle) {
@@ -489,6 +580,41 @@ export const init = () => {
         }
 
         /**
+         * Display messages in the chat interface
+         */
+        function displayMessages(messages) {
+            messagesContainer.innerHTML = '';
+
+            if (messages.length === 0) {
+                messagesContainer.innerHTML = '<div class="ai-message"><strong>AI Assistant:</strong> Hello! How can I help you today?</div>';
+                return;
+            }
+
+            messages.forEach(message => {
+                const messageDiv = document.createElement('div');
+                
+                if (message.message_type === 'user') {
+                    messageDiv.className = 'user-message';
+                    messageDiv.innerHTML = '<strong>You:</strong> ' + message.content;
+                } else if (message.message_type === 'ai') {
+                    messageDiv.className = 'ai-message';
+                    messageDiv.innerHTML = '<strong>AI Assistant:</strong> <span class="response-text">' + message.content + '</span>';
+                    
+                    // Apply markdown rendering if available
+                    const responseSpan = messageDiv.querySelector('.response-text');
+                    if (typeof marked !== 'undefined' && marked.parse) {
+                        responseSpan.innerHTML = marked.parse(message.content);
+                    }
+                }
+                
+                messagesContainer.appendChild(messageDiv);
+            });
+
+            // Scroll to bottom
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        /**
          * Setup event listener for a single conversation item
          */
         function setupConversationItemListener(item) {
@@ -512,8 +638,18 @@ export const init = () => {
                     title: conversationTitle
                 });
 
-                // Clear messages and show welcome message for this conversation
-                messagesContainer.innerHTML = '<div class="ai-message"><strong>AI Assistant:</strong> Hello! How can I help you today?</div>';
+                // Clear messages and show loading state
+                messagesContainer.innerHTML = '<div class="ai-message"><strong>AI Assistant:</strong> <em>Loading conversation...</em></div>';
+
+                // Load messages from database
+                loadMessagesFromDatabase(conversationId)
+                    .then(messages => {
+                        displayMessages(messages);
+                    })
+                    .catch(error => {
+                        console.error('Failed to load messages:', error);
+                        messagesContainer.innerHTML = '<div class="ai-message"><strong>AI Assistant:</strong> <em>Failed to load conversation. Please try again.</em></div>';
+                    });
             });
         }
 
