@@ -22,7 +22,7 @@
         <INDEX NAME="fireworks_key_id" UNIQUE="true" FIELDS="fireworks_key_id"/>
       </INDEXES>
     </TABLE>
-    <TABLE NAME="block_aiassistant_conversations" COMMENT="Stores conversation metadata for each user">
+    <TABLE NAME="block_aiassistant_conv" COMMENT="Stores conversation metadata for each user">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="conversation_id" TYPE="char" LENGTH="255" NOTNULL="true"/>
@@ -41,6 +41,27 @@
         <INDEX NAME="conversation_id_unique" UNIQUE="true" FIELDS="conversation_id"/>
         <INDEX NAME="userid_active" UNIQUE="false" FIELDS="userid, is_active"/>
         <INDEX NAME="userid_last_updated" UNIQUE="false" FIELDS="userid, last_updated"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="block_aiassistant_messages" COMMENT="Stores individual messages within conversations">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="conversation_id" TYPE="char" LENGTH="255" NOTNULL="true"/>
+        <FIELD NAME="message_type" TYPE="char" LENGTH="10" NOTNULL="true"/>
+        <FIELD NAME="content" TYPE="text" NOTNULL="true"/>
+        <FIELD NAME="created_time" TYPE="int" LENGTH="10" NOTNULL="true"/>
+        <FIELD NAME="sequence_number" TYPE="int" LENGTH="10" NOTNULL="true"/>
+        <FIELD NAME="metadata" TYPE="text" NOTNULL="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="conversation_fk" TYPE="foreign" FIELDS="conversation_id" REFTABLE="block_aiassistant_conv" REFFIELDS="conversation_id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="conv_sequence" UNIQUE="false" FIELDS="conversation_id, sequence_number"/>
+        <INDEX NAME="conv_time" UNIQUE="false" FIELDS="conversation_id, created_time"/>
+        <INDEX NAME="message_type_idx" UNIQUE="false" FIELDS="message_type"/>
+        <INDEX NAME="created_time_idx" UNIQUE="false" FIELDS="created_time"/>
       </INDEXES>
     </TABLE>
   </TABLES>
