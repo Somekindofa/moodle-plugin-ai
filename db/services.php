@@ -20,10 +20,18 @@ $functions = [
         'ajax'        => true,
         'loginrequired' => true,
     ],
-    'block_aiassistant_send_claude_message' => [
-        'classname'   => 'block_aiassistant\external\send_claude_message',
-        'methodname'  => 'send_claude_message',
-        'description' => 'Send message to Claude API via server-side proxy',
+    'block_aiassistant_manage_conversations' => [
+        'classname'   => 'block_aiassistant\external\manage_conversations',
+        'methodname'  => 'manage_conversations',
+        'description' => 'Manage user conversations (create, list, update, delete)',
+        'type'        => 'write',
+        'ajax'        => true,
+        'loginrequired' => true,
+    ],
+    'block_aiassistant_manage_messages' => [
+        'classname'   => 'block_aiassistant\external\manage_messages',
+        'methodname'  => 'manage_messages',
+        'description' => 'Manage conversation messages (save, load)',
         'type'        => 'write',
         'ajax'        => true,
         'loginrequired' => true,

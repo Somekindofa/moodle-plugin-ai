@@ -9,7 +9,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'block_aiassistant';
-$plugin->version = 2025092300; // Updated version to force Moodle upgrade
-$plugin->requires = 2022041900; // Moodle 4.0
+$plugin->version = 2025092306; // Updated version to force Moodle upgrade for messages table
+$plugin->requires = 2022041900; // Moodle 4.1
 $plugin->maturity = MATURITY_STABLE;
-$plugin->release = '0.3.0'; // Incremented for refactoring release
+$plugin->release = '0.3.0'; // Incremented for message storage feature
