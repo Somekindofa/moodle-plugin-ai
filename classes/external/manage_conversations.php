@@ -58,8 +58,8 @@ class manage_conversations extends external_api {
 
         try {
             // Check if database table exists
-            if (!$DB->get_manager()->table_exists('block_aiassistant_conversations')) {
-                return self::error_response('Database table block_aiassistant_conversations does not exist');
+            if (!$DB->get_manager()->table_exists('block_aiassistant_conv')) {
+                return self::error_response('Database table block_aiassistant_conv does not exist');
             }
 
             switch ($params['action']) {
@@ -107,7 +107,7 @@ class manage_conversations extends external_api {
         }
 
         // Check if conversation already exists
-        $existing = $DB->get_record('block_aiassistant_conversations', [
+        $existing = $DB->get_record('block_aiassistant_conv', [
             'conversation_id' => $conversation_id,
             'is_active' => 1
         ]);
@@ -126,7 +126,7 @@ class manage_conversations extends external_api {
             $record->is_active = 1;
             $record->metadata = $metadata;
 
-            $id = $DB->insert_record('block_aiassistant_conversations', $record);
+            $id = $DB->insert_record('block_aiassistant_conv', $record);
 
             self::log_debug("Created conversation with database ID {$id} for user {$user_id}");
 
@@ -155,7 +155,7 @@ class manage_conversations extends external_api {
         self::log_debug("Listing conversations for user {$user_id}");
 
         try {
-            $conversations = $DB->get_records('block_aiassistant_conversations', [
+            $conversations = $DB->get_records('block_aiassistant_conv', [
                 'userid' => $user_id,
                 'is_active' => 1
             ], 'last_updated DESC');
@@ -199,7 +199,7 @@ class manage_conversations extends external_api {
         }
 
         try {
-            $conversation = $DB->get_record('block_aiassistant_conversations', [
+            $conversation = $DB->get_record('block_aiassistant_conv', [
                 'conversation_id' => $conversation_id,
                 'userid' => $user_id,
                 'is_active' => 1
@@ -218,7 +218,7 @@ class manage_conversations extends external_api {
             }
             $conversation->last_updated = time();
 
-            $DB->update_record('block_aiassistant_conversations', $conversation);
+            $DB->update_record('block_aiassistant_conv', $conversation);
 
             self::log_debug("Updated conversation {$conversation_id} for user {$user_id}");
 
@@ -250,7 +250,7 @@ class manage_conversations extends external_api {
         }
 
         try {
-            $conversation = $DB->get_record('block_aiassistant_conversations', [
+            $conversation = $DB->get_record('block_aiassistant_conv', [
                 'conversation_id' => $conversation_id,
                 'userid' => $user_id,
                 'is_active' => 1
@@ -264,7 +264,7 @@ class manage_conversations extends external_api {
             $conversation->is_active = 0;
             $conversation->last_updated = time();
 
-            $DB->update_record('block_aiassistant_conversations', $conversation);
+            $DB->update_record('block_aiassistant_conv', $conversation);
 
             self::log_debug("Deleted conversation {$conversation_id} for user {$user_id}");
 
