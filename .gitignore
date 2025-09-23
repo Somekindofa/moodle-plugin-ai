@@ -8,7 +8,7 @@ node_modules/
 /out/
 
 # production
-/amd/build/*
+/amd/build
 
 # debug
 npm-debug.log*
