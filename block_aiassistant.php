@@ -201,6 +201,10 @@ class block_aiassistant extends block_base {
                 border-radius: 4px;
                 cursor: pointer;
                 transition: background-color 0.2s ease, border-color 0.2s ease;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 4px;
             }
             
             .ai-conversation-item:hover {
@@ -221,6 +225,30 @@ class block_aiassistant extends block_base {
                 display: block;
                 word-wrap: break-word;
                 overflow-wrap: break-word;
+                flex: 1;
+            }
+            
+            .ai-conversation-delete-btn {
+                background: #dc3545;
+                color: white;
+                border: none;
+                border-radius: 3px;
+                width: 16px;
+                height: 16px;
+                font-size: 12px;
+                font-weight: bold;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                line-height: 1;
+                transition: background-color 0.2s ease;
+                flex-shrink: 0;
+                padding: 0;
+            }
+            
+            .ai-conversation-delete-btn:hover {
+                background: #c82333;
             }
             
             .ai-chat-main {
