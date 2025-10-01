@@ -238,7 +238,7 @@ class manage_conversations extends external_api {
     }
 
     /**
-     * Delete (soft delete) a conversation
+     * Delete a conversation and all its messages
      */
     private static function delete_conversation(int $user_id, string $conversation_id): array {
         global $DB;
@@ -260,13 +260,17 @@ class manage_conversations extends external_api {
                 return self::error_response('Conversation not found or access denied');
             }
 
-            // Soft delete by setting is_active to 0
+            // Delete all messages associated with this conversation
+            $DB->delete_records('block_aiassistant_messages', [
+                'conversation_id' => $conversation_id
+            ]);
+
+            // Soft delete the conversation by setting is_active to 0
             $conversation->is_active = 0;
             $conversation->last_updated = time();
-
             $DB->update_record('block_aiassistant_conv', $conversation);
 
-            self::log_debug("Deleted conversation {$conversation_id} for user {$user_id}");
+            self::log_debug("Deleted conversation {$conversation_id} and all its messages for user {$user_id}");
 
             return [
                 'success' => true,
