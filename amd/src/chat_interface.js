@@ -384,7 +384,7 @@ export const init = () => {
                 messagesContainer.appendChild(aiMessageDiv);
                 const responseSpan = aiMessageDiv.querySelector('.response-text');
 
-                const url = 'http://aimove.minesparis.psl.eu/api/chat';
+                const url = 'https://aimove.minesparis.psl.eu/api/chat';
                 const options = {
                     method: 'POST',
 
@@ -399,6 +399,7 @@ export const init = () => {
 
                 try {
                     const response = await fetch(url, options);
+                    console.log('Fetch response status:', response.status, response.statusText);
 
                     if (!response.ok) {
                         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -416,10 +417,12 @@ export const init = () => {
                         if (done) break;
 
                         const lines = decoder.decode(value, { stream: true }).split('\n');
+                        console.log('Received chunk:', lines);
                         for (const line of lines) {
                             if (!line.trim()) continue;
                             try {
                                 const data = JSON.parse(line);
+                                console.log('Received SSE data:', data);
                                 if (data.content === '[DONE]') break;
 
                                 // Handle documents (process once when available)
