@@ -384,7 +384,7 @@ export const init = () => {
                 messagesContainer.appendChild(aiMessageDiv);
                 const responseSpan = aiMessageDiv.querySelector('.response-text');
 
-                const url = 'https://aimove.minesparis.psl.eu/api/chat';
+                const url = 'https://127.0.0.1:8000/api/chat';
                 const options = {
                     method: 'POST',
 
