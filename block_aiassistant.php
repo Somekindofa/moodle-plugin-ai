@@ -38,12 +38,6 @@ class block_aiassistant extends block_base {
         <div class=\"ai-chat-container\" id=\"ai-chat-container\">
             <!-- Input area at the top -->
             <div class=\"ai-input-area\">
-                <div class=\"ai-provider-selection\">
-                    <select id=\"ai-provider-select\">
-                        <option value=\"fireworks\">Fireworks.ai</option>
-                    </select>
-                </div>
-                
                 <textarea id=\"ai-chat-input\" placeholder=\"Enter your query here...\" rows=\"1\"></textarea>
                 <button id=\"ai-chat-send\" type=\"button\">Send</button>
             </div>
@@ -51,7 +45,7 @@ class block_aiassistant extends block_base {
             <!-- Toggle button area between input and content -->
             <div class=\"ai-toggle-area\">
                 <button id=\"ai-conversations-toggle\" class=\"ai-conversations-toggle\" type=\"button\" title=\"Toggle Conversations\">
-                    <i class=\"fa-solid fa-table-columns\"></i>
+                    <i class=\"fa-solid fa-chevron-down\"></i>
                 </button>
             </div>
             
@@ -75,7 +69,7 @@ class block_aiassistant extends block_base {
             
             <!-- Collapsible conversations panel -->
             <div class=\"ai-conversations-panel\" id=\"ai-conversations-panel\">
-                <div class=\"ai-conversations-header\">
+                <div class=\"ai-conversations-header\" id=\"ai-conversations-header\">
                     <h4>Previous Conversations</h4>
                     <button id=\"ai-new-conversation-btn\" class=\"ai-new-conversation-btn\" type=\"button\" title=\"New Conversation\">+</button>
                 </div>
@@ -111,6 +105,7 @@ class block_aiassistant extends block_base {
                 padding: 40px 20px 20px 20px;
                 overflow-y: auto;
                 min-height: 400px;
+                background-color: ghostwhite;
             }
             
             /* Motto text */
@@ -268,21 +263,22 @@ class block_aiassistant extends block_base {
                 border-bottom: 1px solid #e9ecef;
                 display: flex;
                 align-items: center;
+                justify-content: center;
             }
             
             .ai-conversations-toggle {
                 background: #007cba;
                 color: white;
                 border: none;
-                border-radius: 4px;
-                width: 36px;
-                height: 36px;
-                font-size: 16px;
+                border-radius: 50%;
+                width: 32px;
+                height: 32px;
+                font-size: 14px;
                 cursor: pointer;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                transition: background-color 0.2s ease;
+                transition: background-color 0.2s ease, transform 0.2s ease;
                 flex-shrink: 0;
             }
             
@@ -292,20 +288,10 @@ class block_aiassistant extends block_base {
             
             .ai-conversations-toggle.active {
                 background: #005a87;
+                transform: rotate(180deg);
             }
             
-            .ai-provider-selection {
-                flex-shrink: 0;
-            }
-            
-            .ai-provider-selection select {
-                padding: 8px 12px;
-                border: 1px solid #ced4da;
-                border-radius: 4px;
-                font-size: 13px;
-                background: white;
-                cursor: pointer;
-            }
+
             
             #ai-chat-input {
                 flex: 1;
@@ -362,9 +348,10 @@ class block_aiassistant extends block_base {
                 background: #e9ecef;
                 border-bottom: 1px solid #dee2e6;
                 display: flex;
-                justify-content: space-between;
+                justify-content: center;
                 align-items: center;
                 flex-shrink: 0;
+                position: relative;
             }
             
             .ai-conversations-header h4 {
@@ -372,10 +359,11 @@ class block_aiassistant extends block_base {
                 font-size: 14px;
                 font-weight: bold;
                 color: #333;
+                text-align: center;
             }
             
             .ai-new-conversation-btn {
-                background: #007cba;
+                background: #7cd3ff;
                 color: white;
                 border: none;
                 border-radius: 50%;
@@ -389,10 +377,12 @@ class block_aiassistant extends block_base {
                 justify-content: center;
                 line-height: 1;
                 transition: background-color 0.2s ease;
+                position: absolute;
+                right: 15px;
             }
             
             .ai-new-conversation-btn:hover {
-                background: #005a87;
+                background: #5ab8e5;
             }
             
             .ai-conversation-list {

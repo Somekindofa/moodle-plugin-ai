@@ -28,7 +28,7 @@ export const init = () => {
         const documentsSection = document.getElementById("ai-documents-section");
         const documentsList = document.getElementById("ai-documents-list");
 
-        if (!sendButton || !chatInput || !messagesContainer || !providerSelect || !newConversationBtn) {
+        if (!sendButton || !chatInput || !messagesContainer || !newConversationBtn) {
             console.error('AI Chat: Required elements not found');
             return;
         }
@@ -269,43 +269,20 @@ export const init = () => {
                 console.error('AI configuration not loaded, cannot setup provider UI');
                 return;
             }
-            // Clear existing options
-            providerSelect.innerHTML = '';
-
+            
+            // Provider select is now removed, always use fireworks
             let hasAvailableProvider = false;
 
-            // Add available providers
+            // Check if provider is available
             if (aiConfig && aiConfig.fireworks_available) {
-                const fireworksOption = document.createElement('option');
-                fireworksOption.value = 'fireworks';
-                fireworksOption.textContent = 'Fireworks.ai';
-                providerSelect.appendChild(fireworksOption);
                 hasAvailableProvider = true;
+                currentProvider = 'fireworks';
             }
 
-            // If no providers are available, add disabled options
+            // If no providers are available, show error
             if (!hasAvailableProvider) {
-                if (!aiConfig || !aiConfig.fireworks_available) {
-                    const fireworksOption = document.createElement('option');
-                    fireworksOption.value = 'fireworks';
-                    fireworksOption.textContent = 'Fireworks.ai (Not configured)';
-                    fireworksOption.disabled = true;
-                    providerSelect.appendChild(fireworksOption);
-                }
-
                 showConfigurationError('No AI providers are configured. Please check plugin settings.');
                 return;
-            }
-
-            // Restore saved selections
-            const savedProvider = localStorage.getItem('ai-chat-provider');
-
-            if (savedProvider && document.querySelector(`option[value="${savedProvider}"]`)) {
-                providerSelect.value = savedProvider;
-                currentProvider = savedProvider;
-            } else if (aiConfig && aiConfig.fireworks_available) {
-                currentProvider = 'fireworks';
-                providerSelect.value = 'fireworks';
             }
         }
 
