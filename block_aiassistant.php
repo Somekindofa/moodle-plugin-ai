@@ -36,6 +36,25 @@ class block_aiassistant extends block_base {
         <script src=\"https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.js\"></script>
         <link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css\">
         <div class=\"ai-chat-container\" id=\"ai-chat-container\">
+            <!-- Input area at the top -->
+            <div class=\"ai-input-area\">
+                <div class=\"ai-provider-selection\">
+                    <select id=\"ai-provider-select\">
+                        <option value=\"fireworks\">Fireworks.ai</option>
+                    </select>
+                </div>
+                
+                <textarea id=\"ai-chat-input\" placeholder=\"Enter your query here...\" rows=\"1\"></textarea>
+                <button id=\"ai-chat-send\" type=\"button\">Send</button>
+            </div>
+            
+            <!-- Toggle button area between input and content -->
+            <div class=\"ai-toggle-area\">
+                <button id=\"ai-conversations-toggle\" class=\"ai-conversations-toggle\" type=\"button\" title=\"Toggle Conversations\">
+                    <i class=\"fa-solid fa-table-columns\"></i>
+                </button>
+            </div>
+            
             <!-- Main content area with motto and results -->
             <div class=\"ai-content-area\" id=\"ai-content-area\">
                 <div class=\"ai-motto\" id=\"ai-motto\">Query. Retrieve. Learn.</div>
@@ -52,22 +71,6 @@ class block_aiassistant extends block_base {
                         </div>
                     </div>
                 </div>
-            </div>
-            
-            <!-- Input area with toggle button -->
-            <div class=\"ai-input-area\">
-                <button id=\"ai-conversations-toggle\" class=\"ai-conversations-toggle\" type=\"button\" title=\"Toggle Conversations\">
-                    <i class=\"fa-solid fa-table-columns\"></i>
-                </button>
-                
-                <div class=\"ai-provider-selection\">
-                    <select id=\"ai-provider-select\">
-                        <option value=\"fireworks\">Fireworks.ai</option>
-                    </select>
-                </div>
-                
-                <textarea id=\"ai-chat-input\" placeholder=\"Enter your query here...\" rows=\"1\"></textarea>
-                <button id=\"ai-chat-send\" type=\"button\">Send</button>
             </div>
             
             <!-- Collapsible conversations panel -->
@@ -105,7 +108,7 @@ class block_aiassistant extends block_base {
                 flex-direction: column;
                 justify-content: center;
                 align-items: center;
-                padding: 20px;
+                padding: 40px 20px 20px 20px;
                 overflow-y: auto;
                 min-height: 400px;
             }
@@ -248,14 +251,23 @@ class block_aiassistant extends block_base {
                 font-style: italic;
             }
             
-            /* Input area */
+            /* Input area - now at the top */
             .ai-input-area {
                 display: flex;
                 align-items: center;
                 gap: 10px;
                 padding: 15px;
                 background: #f8f9fa;
-                border-top: 1px solid #dee2e6;
+                border-bottom: 1px solid #dee2e6;
+            }
+            
+            /* Toggle button area between input and content */
+            .ai-toggle-area {
+                padding: 10px 15px;
+                background: #ffffff;
+                border-bottom: 1px solid #e9ecef;
+                display: flex;
+                align-items: center;
             }
             
             .ai-conversations-toggle {
@@ -324,17 +336,17 @@ class block_aiassistant extends block_base {
                 background: #005a87;
             }
             
-            /* Conversations panel (collapsible, slides from bottom) */
+            /* Conversations panel (collapsible, slides down from toggle area) */
             .ai-conversations-panel {
                 position: absolute;
-                bottom: 70px;
+                top: 130px;
                 left: 0;
                 right: 0;
                 max-height: 300px;
                 background: #ffffff;
-                border-top: 2px solid #8a96ffff;
-                box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
-                transform: translateY(100%);
+                border-bottom: 2px solid #8a96ffff;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                transform: translateY(-100%);
                 transition: transform 0.3s ease;
                 display: flex;
                 flex-direction: column;
