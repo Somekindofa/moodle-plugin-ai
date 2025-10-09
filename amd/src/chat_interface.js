@@ -20,6 +20,13 @@ export const init = () => {
         const messagesContainer = document.getElementById("ai-chat-messages");
         const providerSelect = document.getElementById("ai-provider-select");
         const newConversationBtn = document.getElementById("ai-new-conversation-btn");
+        const conversationsToggle = document.getElementById("ai-conversations-toggle");
+        const conversationsPanel = document.getElementById("ai-conversations-panel");
+        const contentArea = document.getElementById("ai-content-area");
+        const motto = document.getElementById("ai-motto");
+        const resultsArea = document.getElementById("ai-results-area");
+        const documentsSection = document.getElementById("ai-documents-section");
+        const documentsList = document.getElementById("ai-documents-list");
 
         if (!sendButton || !chatInput || !messagesContainer || !providerSelect || !newConversationBtn) {
             console.error('AI Chat: Required elements not found');
@@ -36,24 +43,46 @@ export const init = () => {
         loadExistingConversations();
 
         /**
-         * Displays a list of document paths in the sidepanel.
-         * Populates the sidepanel with the provided document paths.
+         * Displays a list of document paths in the documents section.
+         * Populates the documents section with the provided document paths.
          * If no documents are provided, displays a "No documents retrieved" message.
          * 
-         * @param {string[]} documentPaths - Array of document file paths to display in the sidepanel
+         * @param {string[]} documentPaths - Array of document file paths to display
          */
-        function showDocumentSidepanel(documentPaths) {
-            const content = document.getElementById('ai-sidepanel-content');
-
+        function showDocuments(documentPaths) {
             if (documentPaths && documentPaths.length > 0) {
                 const listHTML = `
-                    <ul class="ai-document-list">
+                    <ul>
                         ${documentPaths.map(path => `<li>${path}</li>`).join('')}
                     </ul>
                 `;
-                content.innerHTML = listHTML;
+                documentsList.innerHTML = listHTML;
             } else {
-                content.innerHTML = '<p>No documents retrieved.</p>';
+                documentsList.innerHTML = '<p>No documents retrieved yet.</p>';
+            }
+        }
+        
+        /**
+         * Show the results area and hide the motto
+         */
+        function showResultsArea() {
+            if (motto) {
+                motto.style.display = 'none';
+            }
+            if (resultsArea) {
+                resultsArea.style.display = 'flex';
+            }
+        }
+        
+        /**
+         * Hide the results area and show the motto
+         */
+        function hideResultsArea() {
+            if (motto) {
+                motto.style.display = 'block';
+            }
+            if (resultsArea) {
+                resultsArea.style.display = 'none';
             }
         }
 
@@ -319,6 +348,9 @@ export const init = () => {
                 conversationId: currentConversationThreadId
             });
             
+            // Show results area and hide motto
+            showResultsArea();
+            
             // Add user message
             const userMessageDiv = document.createElement("div");
             userMessageDiv.className = "user-message";
@@ -430,7 +462,7 @@ export const init = () => {
                                     const document_sources = data.documents.map(doc => {
                                         return doc.metadata?.source || 'Unknown source';
                                     });
-                                    showDocumentSidepanel(document_sources);
+                                    showDocuments(document_sources);
                                     retrievedDocuments = document_sources;
                                     documentsProcessed = true;
                                 }
@@ -539,8 +571,9 @@ export const init = () => {
             // Set as current conversation
             currentConversationThreadId = conversationId;
 
-            // Clear chat messages
-            messagesContainer.innerHTML = '<div class="ai-message"><strong>AI Assistant:</strong> Hello! How can I help you today?</div>';
+            // Clear chat messages and hide results area
+            messagesContainer.innerHTML = '';
+            hideResultsArea();
 
             // Add click listener to the new item
             setupConversationItemListener(newConversationItem);
@@ -658,9 +691,12 @@ export const init = () => {
             messagesContainer.innerHTML = '';
 
             if (messages.length === 0) {
-                messagesContainer.innerHTML = '<div class="ai-message"><strong>AI Assistant:</strong> Hello! How can I help you today?</div>';
+                hideResultsArea();
                 return;
             }
+
+            // Show results area if there are messages
+            showResultsArea();
 
             messages.forEach(message => {
                 const messageDiv = document.createElement('div');
@@ -725,6 +761,7 @@ export const init = () => {
                     })
                     .catch(error => {
                         console.error('Failed to load messages:', error);
+                        showResultsArea();
                         messagesContainer.innerHTML = '<div class="ai-message"><strong>AI Assistant:</strong> <em>Failed to load conversation. Please try again.</em></div>';
                     });
             });
@@ -736,6 +773,14 @@ export const init = () => {
         // Add event listeners
         newConversationBtn.addEventListener('click', createNewConversation);
         sendButton.addEventListener("click", sendMessage);
+        
+        // Toggle conversations panel
+        if (conversationsToggle && conversationsPanel) {
+            conversationsToggle.addEventListener('click', function() {
+                conversationsPanel.classList.toggle('open');
+                conversationsToggle.classList.toggle('active');
+            });
+        }
 
         /**
          * Setup conversation panel functionality

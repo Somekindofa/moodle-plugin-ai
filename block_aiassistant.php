@@ -34,134 +34,330 @@ class block_aiassistant extends block_base {
         
         $html = "
         <script src=\"https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.js\"></script>
+        <link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css\">
         <div class=\"ai-chat-container\" id=\"ai-chat-container\">
-            <div class=\"ai-conversation-panel\" id=\"ai-conversation-panel\">
-                <div class=\"ai-conversation-header\">
-                    <h4>Conversations</h4>
+            <!-- Main content area with motto and results -->
+            <div class=\"ai-content-area\" id=\"ai-content-area\">
+                <div class=\"ai-motto\" id=\"ai-motto\">Query. Retrieve. Learn.</div>
+                
+                <!-- Hidden by default, shown when there are results -->
+                <div class=\"ai-results-area\" id=\"ai-results-area\" style=\"display: none;\">
+                    <div class=\"ai-response-section\" id=\"ai-response-section\">
+                        <div class=\"ai-chat-messages\" id=\"ai-chat-messages\"></div>
+                    </div>
+                    <div class=\"ai-documents-section\" id=\"ai-documents-section\">
+                        <h4>Retrieved Documents</h4>
+                        <div class=\"ai-documents-list\" id=\"ai-documents-list\">
+                            <p>No documents retrieved yet.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Input area with toggle button -->
+            <div class=\"ai-input-area\">
+                <button id=\"ai-conversations-toggle\" class=\"ai-conversations-toggle\" type=\"button\" title=\"Toggle Conversations\">
+                    <i class=\"fa-solid fa-table-columns\"></i>
+                </button>
+                
+                <div class=\"ai-provider-selection\">
+                    <select id=\"ai-provider-select\">
+                        <option value=\"fireworks\">Fireworks.ai</option>
+                    </select>
+                </div>
+                
+                <textarea id=\"ai-chat-input\" placeholder=\"Enter your query here...\" rows=\"1\"></textarea>
+                <button id=\"ai-chat-send\" type=\"button\">Send</button>
+            </div>
+            
+            <!-- Collapsible conversations panel -->
+            <div class=\"ai-conversations-panel\" id=\"ai-conversations-panel\">
+                <div class=\"ai-conversations-header\">
+                    <h4>Previous Conversations</h4>
                     <button id=\"ai-new-conversation-btn\" class=\"ai-new-conversation-btn\" type=\"button\" title=\"New Conversation\">+</button>
                 </div>
                 <div class=\"ai-conversation-list\" id=\"ai-conversation-list\">
                     <!-- Conversations will be created dynamically via JavaScript -->
                 </div>
             </div>
-            
-            <div class=\"ai-chat-main\">
-                <div class=\"ai-provider-selection\">
-                    <div class=\"ai-provider-controls\">
-                        <label for=\"ai-provider-select\">AI Provider:</label>
-
-                        <select id=\"ai-provider-select\">
-                            <option value=\"fireworks\">Fireworks.ai</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class=\"ai-chat-messages\" id=\"ai-chat-messages\">
-                    <div class=\"ai-message\">
-                        <strong>AI Assistant:</strong> Hello! How can I help you today?
-                    </div>
-                </div>
-
-                <div class=\"ai-chat-input\">
-                    <textarea id=\"ai-chat-input\" placeholder=\"Type your message here...\" rows=\"3\"></textarea>
-                    <button id=\"ai-chat-send\" type=\"button\">Send</button>
-                </div>
-            </div>
-
-            <div class=\"ai-sidepanel\" id=\"ai-sidepanel\">
-                <div class=\"ai-sidepanel-header\">
-                    <h4>Retrieved Documents</h4>
-                </div>
-
-                <div class=\"ai-sidepanel-content\" id=\"ai-sidepanel-content\">
-                    <p>No documents retrieved yet.</p>
-                </div>
-            </div>
         </div>
         
         <style>
-            .ai-sidepanel {
-                width: 15%;
-                min-width: 150px;
-                background: #f8f9fa;
-                border-left: 1px solid #ddd;
+            /* Main container */
+            .ai-chat-container {
+                position: relative;
+                width: 100%;
+                max-width: 900px;
+                min-height: 500px;
+                border: 1px solid #8a96ffff;
+                border-radius: 8px;
+                overflow: hidden;
+                margin: 0 auto;
                 display: flex;
                 flex-direction: column;
+                background: #ffffff;
             }
             
-            .ai-sidepanel-header {
-                padding: 8px 10px;
-                background: #e9ecef;
-                border-bottom: 1px solid #ddd;
-                flex-shrink: 0;
+            /* Content area with motto and results */
+            .ai-content-area {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                padding: 20px;
+                overflow-y: auto;
+                min-height: 400px;
             }
             
-            .ai-sidepanel-header h4 {
-                margin: 0;
-                font-size: 12px;
+            /* Motto text */
+            .ai-motto {
+                font-size: 2.5em;
+                font-weight: 300;
+                color: rgba(0, 0, 0, 0.15);
+                text-align: center;
+                letter-spacing: 2px;
+                user-select: none;
+            }
+            
+            /* Results area (hidden by default) */
+            .ai-results-area {
+                width: 100%;
+                height: 100%;
+                display: flex;
+                gap: 20px;
+            }
+            
+            /* Response section (LLM-generated text) */
+            .ai-response-section {
+                flex: 2;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+            }
+            
+            /* Documents section (retrieved links) */
+            .ai-documents-section {
+                flex: 1;
+                background: #f8f9fa;
+                border: 1px solid #dee2e6;
+                border-radius: 4px;
+                padding: 15px;
+                overflow-y: auto;
+                max-width: 300px;
+            }
+            
+            .ai-documents-section h4 {
+                margin: 0 0 10px 0;
+                font-size: 14px;
                 font-weight: bold;
                 color: #333;
             }
             
-            .ai-sidepanel-content {
-                flex: 1;
-                padding: 5px;
-                overflow-y: auto;
+            .ai-documents-list {
+                font-size: 12px;
             }
             
-            .ai-document-list {
+            .ai-documents-list ul {
                 list-style: none;
                 padding: 0;
                 margin: 0;
             }
             
-            .ai-document-list li {
-                padding: 6px;
-                margin-bottom: 4px;
+            .ai-documents-list li {
+                padding: 8px;
+                margin-bottom: 8px;
                 background: #ffffff;
                 border: 1px solid #e3e6ea;
                 border-radius: 4px;
-                font-size: 10px;
                 word-wrap: break-word;
                 overflow-wrap: break-word;
-                line-height: 1.2;
+                line-height: 1.3;
                 color: #495057;
             }
             
-            .ai-chat-container {
-                position: relative;
-                width: 750px;
-                min-width: 500px;
-                max-width: 750px;
-                border: 1px solid #8a96ffff;
+            /* Chat messages */
+            .ai-chat-messages {
+                flex: 1;
+                overflow-y: auto;
+                padding: 15px;
+                background: #f9f9f9;
+                border: 1px solid #dee2e6;
                 border-radius: 4px;
-                overflow: hidden;
-                margin: 0 auto;
-                display: flex;
             }
             
-            .ai-conversation-panel {
-                width: 15%;
-                min-width: 160px;
+            .ai-message, .user-message {
+                margin-bottom: 15px;
+                padding: 10px;
+                border-radius: 6px;
+                line-height: 1.5;
+            }
+            
+            .ai-message {
+                background: #e3f2fd;
+            }
+            
+            .user-message {
+                background: #f3e5f5;
+                text-align: right;
+            }
+            
+            /* Markdown rendering styles */
+            .ai-message .response-text h1, .ai-message .response-text h2, .ai-message .response-text h3 {
+                margin: 0.5em 0;
+                font-weight: bold;
+            }
+            .ai-message .response-text h1 { font-size: 1.3em; }
+            .ai-message .response-text h2 { font-size: 1.2em; }
+            .ai-message .response-text h3 { font-size: 1.1em; }
+            .ai-message .response-text p {
+                margin: 0.5em 0;
+            }
+            .ai-message .response-text code {
+                background: #f0f0f0;
+                padding: 2px 4px;
+                border-radius: 3px;
+                font-family: monospace;
+                font-size: 0.9em;
+            }
+            .ai-message .response-text pre {
+                background: #f0f0f0;
+                padding: 10px;
+                border-radius: 5px;
+                overflow-x: auto;
+                margin: 0.5em 0;
+            }
+            .ai-message .response-text pre code {
+                background: none;
+                padding: 0;
+            }
+            .ai-message .response-text ul, .ai-message .response-text ol {
+                margin: 0.5em 0;
+                padding-left: 20px;
+            }
+            .ai-message .response-text blockquote {
+                border-left: 3px solid #ddd;
+                margin: 0.5em 0;
+                padding-left: 10px;
+                color: #666;
+            }
+            .ai-message .response-text strong {
+                font-weight: bold;
+            }
+            .ai-message .response-text em {
+                font-style: italic;
+            }
+            
+            /* Input area */
+            .ai-input-area {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 15px;
                 background: #f8f9fa;
-                border-right: 1px solid #ddd;
+                border-top: 1px solid #dee2e6;
+            }
+            
+            .ai-conversations-toggle {
+                background: #007cba;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                width: 36px;
+                height: 36px;
+                font-size: 16px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: background-color 0.2s ease;
+                flex-shrink: 0;
+            }
+            
+            .ai-conversations-toggle:hover {
+                background: #005a87;
+            }
+            
+            .ai-conversations-toggle.active {
+                background: #005a87;
+            }
+            
+            .ai-provider-selection {
+                flex-shrink: 0;
+            }
+            
+            .ai-provider-selection select {
+                padding: 8px 12px;
+                border: 1px solid #ced4da;
+                border-radius: 4px;
+                font-size: 13px;
+                background: white;
+                cursor: pointer;
+            }
+            
+            #ai-chat-input {
+                flex: 1;
+                border: 1px solid #ced4da;
+                border-radius: 4px;
+                padding: 10px 12px;
+                font-size: 14px;
+                resize: vertical;
+                min-height: 36px;
+                max-height: 120px;
+                font-family: inherit;
+            }
+            
+            #ai-chat-send {
+                padding: 10px 20px;
+                background: #007cba;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: 500;
+                transition: background-color 0.2s ease;
+                flex-shrink: 0;
+            }
+            
+            #ai-chat-send:hover {
+                background: #005a87;
+            }
+            
+            /* Conversations panel (collapsible, slides from bottom) */
+            .ai-conversations-panel {
+                position: absolute;
+                bottom: 70px;
+                left: 0;
+                right: 0;
+                max-height: 300px;
+                background: #ffffff;
+                border-top: 2px solid #8a96ffff;
+                box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+                transform: translateY(100%);
+                transition: transform 0.3s ease;
                 display: flex;
                 flex-direction: column;
+                z-index: 10;
             }
             
-            .ai-conversation-header {
-                padding: 8px 10px;
+            .ai-conversations-panel.open {
+                transform: translateY(0);
+            }
+            
+            .ai-conversations-header {
+                padding: 12px 15px;
                 background: #e9ecef;
-                border-bottom: 1px solid #ddd;
-                flex-shrink: 0;
+                border-bottom: 1px solid #dee2e6;
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
+                flex-shrink: 0;
             }
             
-            .ai-conversation-header h4 {
+            .ai-conversations-header h4 {
                 margin: 0;
-                font-size: 12px;
+                font-size: 14px;
                 font-weight: bold;
                 color: #333;
             }
@@ -171,9 +367,9 @@ class block_aiassistant extends block_base {
                 color: white;
                 border: none;
                 border-radius: 50%;
-                width: 20px;
-                height: 20px;
-                font-size: 14px;
+                width: 28px;
+                height: 28px;
+                font-size: 18px;
                 font-weight: bold;
                 cursor: pointer;
                 display: flex;
@@ -189,13 +385,14 @@ class block_aiassistant extends block_base {
             
             .ai-conversation-list {
                 flex: 1;
-                padding: 5px;
+                padding: 10px;
                 overflow-y: auto;
+                background: #f8f9fa;
             }
             
             .ai-conversation-item {
-                padding: 8px 6px;
-                margin-bottom: 4px;
+                padding: 10px 12px;
+                margin-bottom: 6px;
                 background: #ffffff;
                 border: 1px solid #e3e6ea;
                 border-radius: 4px;
@@ -204,7 +401,7 @@ class block_aiassistant extends block_base {
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
-                gap: 4px;
+                gap: 8px;
             }
             
             .ai-conversation-item:hover {
@@ -219,8 +416,8 @@ class block_aiassistant extends block_base {
             }
             
             .ai-conversation-title {
-                font-size: 10px;
-                line-height: 1.2;
+                font-size: 13px;
+                line-height: 1.3;
                 color: #495057;
                 display: block;
                 word-wrap: break-word;
@@ -233,9 +430,9 @@ class block_aiassistant extends block_base {
                 color: white;
                 border: none;
                 border-radius: 3px;
-                width: 16px;
-                height: 16px;
-                font-size: 12px;
+                width: 20px;
+                height: 20px;
+                font-size: 14px;
                 font-weight: bold;
                 cursor: pointer;
                 display: flex;
@@ -249,166 +446,6 @@ class block_aiassistant extends block_base {
             
             .ai-conversation-delete-btn:hover {
                 background: #c82333;
-            }
-            
-            .ai-chat-main {
-                flex: 1;
-                display: flex;
-                flex-direction: column;
-                position: relative;
-            }
-
-            .ai-provider-selection {
-                background: #f0f0f0;
-                padding: 10px;
-                border-bottom: 1px solid #ddd;
-            }
-
-            .ai-provider-controls {
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                flex-wrap: wrap;
-            }
-
-            .ai-provider-controls label {
-                font-weight: bold;
-                font-size: 12px;
-                color: #333;
-            }
-
-            .ai-provider-controls select {
-                padding: 5px 8px;
-                border: 1px solid #ccc;
-                border-radius: 4px;
-                font-size: 12px;
-                background: white;
-            }
-            
-            .ai-chat-messages {
-                height: 200px;
-                min-height: 150px;
-                max-height: 600px;
-                overflow-y: auto;
-                padding: 10px;
-                background: #f9f9f9;
-                border-bottom: 1px solid #ddd;
-            }
-            
-            .ai-resize-handle {
-                position: absolute;
-                bottom: 0;
-                right: 0;
-                width: 20px;
-                height: 20px;
-                cursor: se-resize;
-                background: linear-gradient(135deg, transparent 0%, transparent 30%, #999 30%, #999 40%, transparent 40%, transparent 50%, #999 50%, #999 60%, transparent 60%, transparent 70%, #999 70%, #999 80%, transparent 80%);
-                border-top-left-radius: 4px;
-                opacity: 0.7;
-                transition: opacity 0.2s ease;
-            }
-            
-            .ai-resize-handle:hover {
-                opacity: 1;
-            }
-            
-            .ai-chat-container.resizing {
-                user-select: none;
-            }
-            
-            .ai-message, .user-message {
-                margin-bottom: 10px;
-                padding: 8px;
-                border-radius: 4px;
-            }
-            
-            .ai-message .response-text h1, .ai-message .response-text h2, .ai-message .response-text h3 {
-                margin: 0.5em 0;
-                font-weight: bold;
-            }
-            .ai-message .response-text h1 { font-size: 1.2em; }
-            .ai-message .response-text h2 { font-size: 1.1em; }
-            .ai-message .response-text h3 { font-size: 1.05em; }
-            .ai-message .response-text p {
-                margin: 0.5em 0;
-            }
-        
-            .ai-message .response-text code {
-                background: #f0f0f0;
-                padding: 2px 4px;
-                border-radius: 3px;
-                font-family: monospace;
-                font-size: 0.9em;
-            }
-            
-            .ai-message .response-text pre {
-                background: #f0f0f0;
-                padding: 10px;
-                border-radius: 5px;
-                overflow-x: auto;
-                margin: 0.5em 0;
-            }
-            
-            .ai-message .response-text pre code {
-                background: none;
-                padding: 0;
-            }
-            
-            .ai-message .response-text ul, .ai-message .response-text ol {
-                margin: 0.5em 0;
-                padding-left: 20px;
-            }
-            
-            .ai-message .response-text blockquote {
-                border-left: 3px solid #ddd;
-                margin: 0.5em 0;
-                padding-left: 10px;
-                color: #666;
-            }
-            
-            .ai-message .response-text strong {
-                font-weight: bold;
-            }
-            
-            .ai-message .response-text em {
-                font-style: italic;
-            }
-            .ai-message {
-                background: #e3f2fd;
-            }
-            
-            .user-message {
-                background: #f3e5f5;
-                text-align: right;
-            }
-            
-            .ai-chat-input {
-                padding: 10px;
-                display: flex;
-                gap: 5px;
-                flex-direction: row;
-                align-items: center;
-            }
-            
-            .ai-chat-input textarea {
-                flex: 1;
-                border: 1px solid #ccc;
-                border-radius: 4px;
-                padding: 8px;
-                resize: vertical;
-            }
-            
-            .ai-chat-input button {
-                padding: 5px 10px;
-                background: #007cba;
-                color: white;
-                border: none;
-                border-radius: 16px;
-                cursor: pointer;
-            }
-            
-            .ai-chat-input button:hover {
-                background: #005a87;
             }
 
             .ai-provider-disabled {
