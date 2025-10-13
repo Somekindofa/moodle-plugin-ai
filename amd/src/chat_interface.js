@@ -337,8 +337,9 @@ export const init = () => {
             // Save user message to database
             saveMessageToDatabase(currentConversationThreadId, 'user', message);
 
-            // Clear input
+            // Clear input and reset height
             chatInput.value = "";
+            chatInput.style.height = 'auto';
 
             // Show loading state
             const loadingDiv = document.createElement("div");
@@ -389,11 +390,12 @@ export const init = () => {
             setTimeout(async function () {
                 const aiMessageDiv = document.createElement("div");
                 aiMessageDiv.className = "ai-message";
-                aiMessageDiv.innerHTML = "<strong>AI Assistant (Fireworks):</strong> <span class='response-text'></span>";
+                aiMessageDiv.innerHTML = "<strong>AI Assistant (Fireworks):</strong> <span class='response-text'><span class='ai-thinking'><span class='ai-thinking-dot'>.</span><span class='ai-thinking-dot'>.</span><span class='ai-thinking-dot'>.</span></span></span>";
                 messagesContainer.appendChild(aiMessageDiv);
                 const responseSpan = aiMessageDiv.querySelector('.response-text');
 
-                const url = 'https://aimove.minesparis.psl.eu/api/chat';
+                // const url = 'https://aimove.minesparis.psl.eu/api/chat';
+                const url = "http://127.0.0.1:8000/api/chat"; // Local FastAPI endpoint
                 const options = {
                     method: 'POST',
 
@@ -433,6 +435,12 @@ export const init = () => {
                                 const data = JSON.parse(line);
                                 console.log('Received SSE data:', data);
                                 if (data.content === '[DONE]') break;
+
+                                // Remove thinking indicator on first real content
+                                const thinkingIndicator = responseSpan.querySelector('.ai-thinking');
+                                if (thinkingIndicator) {
+                                    thinkingIndicator.remove();
+                                }
 
                                 // Handle documents (process once when available)
                                 if (data.documents && Array.isArray(data.documents) && data.documents.length > 0 && !documentsProcessed) {
@@ -769,6 +777,19 @@ export const init = () => {
                 setupConversationItemListener(item);
             });
         }
+        // Auto-resize textarea as user types
+        function autoResizeTextarea() {
+            chatInput.style.height = 'auto'; // Reset height to recalculate
+            const lineHeight = 24; // Line height in pixels
+            const maxLines = 4;
+            const maxHeight = lineHeight * maxLines;
+            const newHeight = Math.min(chatInput.scrollHeight, maxHeight);
+            chatInput.style.height = newHeight + 'px';
+        }
+
+        // Add input event listener for auto-resize
+        chatInput.addEventListener('input', autoResizeTextarea);
+
         chatInput.addEventListener("keypress", function (e) {
             if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
