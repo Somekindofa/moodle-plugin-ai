@@ -38,14 +38,18 @@ class block_aiassistant extends block_base {
         <div class=\"ai-chat-container\" id=\"ai-chat-container\">
             <!-- Input area at the top -->
             <div class=\"ai-input-area\">
-                <textarea id=\"ai-chat-input\" placeholder=\"Enter your query here...\" rows=\"1\"></textarea>
-                <button id=\"ai-chat-send\" type=\"button\">Send</button>
+                <div class=\"ai-input-wrapper\">
+                    <textarea id=\"ai-chat-input\" placeholder=\"Enter your query here...\" rows=\"1\"></textarea>
+                    <button id=\"ai-chat-send\" type=\"button\" title=\"Send message\">
+                        <i class=\"fa-solid fa-paper-plane\"></i>
+                    </button>
+                </div>
             </div>
             
             <!-- Toggle button area between input and content -->
             <div class=\"ai-toggle-area\">
                 <button id=\"ai-conversations-toggle\" class=\"ai-conversations-toggle\" type=\"button\" title=\"Toggle Conversations\">
-                    <i class=\"fa-solid fa-chevron-down\"></i>
+                    <i class=\"fa-solid fa-comments\"></i>
                 </button>
             </div>
             
@@ -59,7 +63,9 @@ class block_aiassistant extends block_base {
                         <div class=\"ai-chat-messages\" id=\"ai-chat-messages\"></div>
                     </div>
                     <div class=\"ai-documents-section\" id=\"ai-documents-section\">
-                        <h4>Retrieved Documents</h4>
+                        <h4>
+                            <i class=\"fa-solid fa-file\"></i> Retrieved Documents
+                        </h4>
                         <div class=\"ai-documents-list\" id=\"ai-documents-list\">
                             <p>No documents retrieved yet.</p>
                         </div>
@@ -248,12 +254,26 @@ class block_aiassistant extends block_base {
             
             /* Input area - now at the top */
             .ai-input-area {
-                display: flex;
-                align-items: center;
-                gap: 10px;
                 padding: 15px;
                 background: #f8f9fa;
                 border-bottom: 1px solid #dee2e6;
+                flex-shrink: 0;
+            }
+            
+            .ai-input-wrapper {
+                position: relative;
+                display: flex;
+                align-items: center;
+                background: #ffffff;
+                border: 1px solid #ced4da;
+                border-radius: 24px;
+                padding: 8px 12px;
+                transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            }
+            
+            .ai-input-wrapper:focus-within {
+                border-color: #007cba;
+                box-shadow: 0 0 0 3px rgba(0, 124, 186, 0.1);
             }
             
             /* Toggle button area between input and content */
@@ -264,6 +284,9 @@ class block_aiassistant extends block_base {
                 display: flex;
                 align-items: center;
                 justify-content: center;
+                position: relative;
+                z-index: 15;
+                flex-shrink: 0;
             }
             
             .ai-conversations-toggle {
@@ -271,76 +294,101 @@ class block_aiassistant extends block_base {
                 color: white;
                 border: none;
                 border-radius: 50%;
-                width: 32px;
-                height: 32px;
-                font-size: 14px;
+                width: 36px;
+                height: 36px;
+                font-size: 16px;
                 cursor: pointer;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                transition: background-color 0.2s ease, transform 0.2s ease;
+                transition: background-color 0.2s ease, transform 0.1s ease;
                 flex-shrink: 0;
             }
             
             .ai-conversations-toggle:hover {
                 background: #005a87;
+                transform: scale(1.08);
+            }
+            
+            .ai-conversations-toggle:active {
+                transform: scale(0.95);
             }
             
             .ai-conversations-toggle.active {
                 background: #005a87;
-                transform: rotate(180deg);
             }
             
 
             
             #ai-chat-input {
                 flex: 1;
-                border: 1px solid #ced4da;
-                border-radius: 4px;
-                padding: 10px 12px;
+                border: none;
+                outline: none;
+                padding: 6px 12px;
+                padding-right: 50px;
                 font-size: 14px;
-                resize: vertical;
-                min-height: 36px;
-                max-height: 120px;
+                resize: none;
+                min-height: 24px;
+                max-height: 96px;
                 font-family: inherit;
+                line-height: 24px;
+                overflow-y: auto;
+                background: transparent;
+                transition: height 0.1s ease;
+            }
+            
+            #ai-chat-input::placeholder {
+                color: #999;
             }
             
             #ai-chat-send {
-                padding: 10px 20px;
+                position: absolute;
+                right: 8px;
+                top: 50%;
+                transform: translateY(-50%);
+                width: 38px;
+                height: 38px;
+                padding: 0;
                 background: #007cba;
                 color: white;
                 border: none;
-                border-radius: 4px;
+                border-radius: 50%;
                 cursor: pointer;
-                font-size: 14px;
-                font-weight: 500;
-                transition: background-color 0.2s ease;
+                font-size: 16px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: background-color 0.2s ease, transform 0.1s ease;
                 flex-shrink: 0;
             }
             
             #ai-chat-send:hover {
                 background: #005a87;
+                transform: translateY(-50%) scale(1.05);
+            }
+            
+            #ai-chat-send:active {
+                transform: translateY(-50%) scale(0.95);
             }
             
             /* Conversations panel (collapsible, slides down from toggle area) */
             .ai-conversations-panel {
-                position: absolute;
-                top: 130px;
-                left: 0;
-                right: 0;
-                max-height: 300px;
+                max-height: 0;
                 background: #ffffff;
                 border-bottom: 2px solid #8a96ffff;
                 box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-                transform: translateY(-100%);
-                transition: transform 0.3s ease;
+                transition: max-height 0.3s ease, opacity 0.3s ease;
                 display: flex;
                 flex-direction: column;
                 z-index: 10;
+                opacity: 0;
+                overflow: hidden;
+                flex-shrink: 0;
             }
             
             .ai-conversations-panel.open {
-                transform: translateY(0);
+                max-height: 300px;
+                opacity: 1;
             }
             
             .ai-conversations-header {
@@ -453,6 +501,42 @@ class block_aiassistant extends block_base {
             .ai-provider-disabled {
                 opacity: 0.6;
                 pointer-events: none;
+            }
+            
+            /* Thinking indicator animation */
+            .ai-thinking {
+                display: inline-block;
+                font-size: 20px;
+                line-height: 1;
+            }
+            
+            .ai-thinking-dot {
+                opacity: 0;
+                animation: thinkingDot 1.5s infinite;
+            }
+            
+            .ai-thinking-dot:nth-child(1) {
+                animation-delay: 0s;
+            }
+            
+            .ai-thinking-dot:nth-child(2) {
+                animation-delay: 0.3s;
+            }
+            
+            .ai-thinking-dot:nth-child(3) {
+                animation-delay: 0.6s;
+            }
+            
+            @keyframes thinkingDot {
+                0%, 20% {
+                    opacity: 0;
+                }
+                40% {
+                    opacity: 1;
+                }
+                60%, 100% {
+                    opacity: 0;
+                }
             }
         </style>";
         
