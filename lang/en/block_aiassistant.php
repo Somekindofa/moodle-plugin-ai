@@ -17,16 +17,3 @@ $string['fireworks_api_token'] = 'Fireworks API Token';
 $string['fireworks_api_token_desc'] = 'Your master API token for creating user-specific keys';
 $string['fireworks_service_account_id'] = 'Fireworks Service Account ID';
 $string['fireworks_service_account_id_desc'] = 'Your Fireworks.ai Service Account ID for API access';
-
-// Claude API Configuration
-$string['claude_heading'] = 'Claude API Configuration';
-$string['claude_heading_desc'] = 'Configure Claude API settings for AI assistant functionality';
-$string['claude_api_key'] = 'Claude API Key';
-$string['claude_api_key_desc'] = 'Your Claude API key for accessing Claude models';
-$string['claude_default_model'] = 'Default Claude Model';
-$string['claude_default_model_desc'] = 'Select the default Claude model to use when Claude API is selected';
-
-// Claude Model Names
-$string['claude_opus_4_1'] = 'Claude Opus 4.1';
-$string['claude_sonnet_4'] = 'Claude Sonnet 4';
-$string['claude_haiku'] = 'Claude Haiku';

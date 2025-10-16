@@ -127,7 +127,7 @@ class block_aiassistant extends block_base {
             /* Results area (hidden by default) */
             .ai-results-area {
                 width: 100%;
-                height: 100%;
+                max-height: 500px;
                 display: flex;
                 gap: 20px;
             }
@@ -138,6 +138,7 @@ class block_aiassistant extends block_base {
                 display: flex;
                 flex-direction: column;
                 overflow: hidden;
+                min-height: 0;
             }
             
             /* Documents section (retrieved links) */
@@ -149,6 +150,7 @@ class block_aiassistant extends block_base {
                 padding: 15px;
                 overflow-y: auto;
                 max-width: 300px;
+                min-height: 0;
             }
             
             .ai-documents-section h4 {
