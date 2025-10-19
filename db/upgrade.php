@@ -162,5 +162,67 @@ function xmldb_block_aiassistant_upgrade($oldversion) {
         error_log("AI Assistant: Messages table upgrade completed successfully");
     }
 
+    // Add upgrade for video annotation tables
+    if ($oldversion < 2025101901) {
+        error_log("AI Assistant: Creating video annotation tables");
+        
+        // Define table block_aiassistant_projects
+        $table = new xmldb_table('block_aiassistant_projects');
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('name', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('description', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('created_at', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_index('name', XMLDB_INDEX_UNIQUE, ['name']);
+
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+            error_log("AI Assistant: Projects table created successfully");
+        }
+
+        // Define table block_aiassistant_videos
+        $table = new xmldb_table('block_aiassistant_videos');
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('project_id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('filename', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('original_filename', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('file_path', XMLDB_TYPE_CHAR, '512', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('duration', XMLDB_TYPE_NUMBER, '10, 2', null, null, null, null);
+        $table->add_field('created_at', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('project_id', XMLDB_KEY_FOREIGN, ['project_id'], 'block_aiassistant_projects', ['id']);
+
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+            error_log("AI Assistant: Videos table created successfully");
+        }
+
+        // Define table block_aiassistant_annotations
+        $table = new xmldb_table('block_aiassistant_annotations');
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('video_id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('timestamp', XMLDB_TYPE_NUMBER, '10, 2', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('audio_file_path', XMLDB_TYPE_CHAR, '512', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('transcription', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('transcription_status', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, 'pending');
+        $table->add_field('extended_transcript', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('extended_transcript_status', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, 'pending');
+        $table->add_field('feedback', XMLDB_TYPE_INTEGER, '1', null, null, null, null);
+        $table->add_field('feedback_choices', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+        $table->add_field('created_at', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('video_id', XMLDB_KEY_FOREIGN, ['video_id'], 'block_aiassistant_videos', ['id']);
+        $table->add_index('timestamp', XMLDB_INDEX_NOTUNIQUE, ['timestamp']);
+
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+            error_log("AI Assistant: Annotations table created successfully");
+        }
+
+        // Aiassistant savepoint reached
+        upgrade_block_savepoint(true, 2025101901, 'aiassistant');
+        error_log("AI Assistant: Video annotation tables upgrade completed successfully");
+    }
+
     return true;
 }

@@ -9,7 +9,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'block_aiassistant';
-$plugin->version = 2025101305; // Updated version to force Moodle upgrade for messages table
+$plugin->version = 2025101901; // Updated version for video annotation tables
 $plugin->requires = 2022041900; // Moodle 4.1
 $plugin->maturity = MATURITY_STABLE;
-$plugin->release = '0.3.0'; // Incremented for message storage feature
+$plugin->release = '0.4.0'; // Incremented for video player feature
