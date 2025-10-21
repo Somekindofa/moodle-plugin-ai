@@ -43,7 +43,7 @@
         <INDEX NAME="userid_last_updated" UNIQUE="false" FIELDS="userid, last_updated"/>
       </INDEXES>
     </TABLE>
-    <TABLE NAME="block_aiassistant_messages" COMMENT="Stores individual messages within conversations">
+    <TABLE NAME="block_aiassistant_msg" COMMENT="Stores individual messages within conversations">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="conversation_id" TYPE="char" LENGTH="255" NOTNULL="true"/>
@@ -64,7 +64,7 @@
         <INDEX NAME="created_time_idx" UNIQUE="false" FIELDS="created_time"/>
       </INDEXES>
     </TABLE>
-    <TABLE NAME="block_aiassistant_projects" COMMENT="Video annotation projects">
+    <TABLE NAME="block_aiassistant_proj" COMMENT="Video annotation projects">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="true"/>
@@ -90,10 +90,10 @@
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-        <KEY NAME="project_id" TYPE="foreign" FIELDS="project_id" REFTABLE="block_aiassistant_projects" REFFIELDS="id"/>
+        <KEY NAME="project_id" TYPE="foreign" FIELDS="project_id" REFTABLE="block_aiassistant_proj" REFFIELDS="id"/>
       </KEYS>
     </TABLE>
-    <TABLE NAME="block_aiassistant_annotations" COMMENT="Audio annotations with transcriptions">
+    <TABLE NAME="block_aiassistant_annot" COMMENT="Audio annotations with transcriptions">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="video_id" TYPE="int" LENGTH="10" NOTNULL="true"/>
