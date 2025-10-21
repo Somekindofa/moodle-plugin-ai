@@ -53,6 +53,17 @@ class block_aiassistant extends block_base {
                 </button>
             </div>
             
+            <!-- Collapsible conversations panel -->
+            <div class=\"ai-conversations-panel\" id=\"ai-conversations-panel\">
+                <div class=\"ai-conversations-header\" id=\"ai-conversations-header\">
+                    <h4>Previous Conversations</h4>
+                    <button id=\"ai-new-conversation-btn\" class=\"ai-new-conversation-btn\" type=\"button\" title=\"New Conversation\">+</button>
+                </div>
+                <div class=\"ai-conversation-list\" id=\"ai-conversation-list\">
+                    <!-- Conversations will be created dynamically via JavaScript -->
+                </div>
+            </div>
+            
             <!-- Main content area with motto and results -->
             <div class=\"ai-content-area\" id=\"ai-content-area\">
                 <div class=\"ai-motto\" id=\"ai-motto\">Query. Retrieve. Learn.</div>
@@ -70,17 +81,6 @@ class block_aiassistant extends block_base {
                             <p>No documents retrieved yet.</p>
                         </div>
                     </div>
-                </div>
-            </div>
-            
-            <!-- Collapsible conversations panel -->
-            <div class=\"ai-conversations-panel\" id=\"ai-conversations-panel\">
-                <div class=\"ai-conversations-header\" id=\"ai-conversations-header\">
-                    <h4>Previous Conversations</h4>
-                    <button id=\"ai-new-conversation-btn\" class=\"ai-new-conversation-btn\" type=\"button\" title=\"New Conversation\">+</button>
-                </div>
-                <div class=\"ai-conversation-list\" id=\"ai-conversation-list\">
-                    <!-- Conversations will be created dynamically via JavaScript -->
                 </div>
             </div>
         </div>
@@ -178,6 +178,52 @@ class block_aiassistant extends block_base {
                 overflow-wrap: break-word;
                 line-height: 1.3;
                 color: #495057;
+            }
+            
+            /* Video player container */
+            .ai-video-container {
+                margin-bottom: 20px;
+                padding: 15px;
+                background: #f9f9f9;
+                border: 1px solid #dee2e6;
+                border-radius: 8px;
+            }
+            
+            .ai-video-container h4 {
+                margin-top: 0;
+                margin-bottom: 10px;
+                color: #333;
+                font-size: 14px;
+                font-weight: bold;
+            }
+            
+            .ai-video-container p {
+                margin: 5px 0;
+                font-size: 12px;
+                color: #666;
+            }
+            
+            .ai-video-container video {
+                width: 100%;
+                max-height: 400px;
+                border-radius: 4px;
+                background: #000;
+                margin-top: 10px;
+            }
+            
+            /* Documents list section (when video is present) */
+            .ai-documents-list-section {
+                margin-top: 15px;
+                padding-top: 15px;
+                border-top: 1px solid #dee2e6;
+            }
+            
+            .ai-documents-list-section h4 {
+                margin-top: 0;
+                margin-bottom: 10px;
+                color: #333;
+                font-size: 13px;
+                font-weight: bold;
             }
             
             /* Chat messages */
