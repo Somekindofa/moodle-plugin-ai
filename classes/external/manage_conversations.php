@@ -261,7 +261,7 @@ class manage_conversations extends external_api {
             }
 
             // Delete all messages associated with this conversation
-            $DB->delete_records('block_aiassistant_messages', [
+            $DB->delete_records('block_aiassistant_msg', [
                 'conversation_id' => $conversation_id
             ]);
 

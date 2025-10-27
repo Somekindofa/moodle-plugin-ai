@@ -12,4 +12,4 @@ $plugin->component = 'block_aiassistant';
 $plugin->version = 2025102701; // Updated version to force Moodle upgrade for messages table
 $plugin->requires = 2022041900; // Moodle 4.1
 $plugin->maturity = MATURITY_STABLE;
-$plugin->release = '0.3.0'; // Incremented for message storage feature
+$plugin->release = '0.4.1'; // Table name length fixes

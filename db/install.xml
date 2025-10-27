@@ -7,7 +7,6 @@
         <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true"/>
         <FIELD NAME="fireworks_key_id" TYPE="char" LENGTH="255" NOTNULL="true"/>
         <FIELD NAME="fireworks_api_key" TYPE="char" LENGTH="255" NOTNULL="true"/>
-        <FIELD NAME="claude_api_key" TYPE="text" NOTNULL="false"/>
         <FIELD NAME="display_name" TYPE="char" LENGTH="100" NOTNULL="true"/>
         <FIELD NAME="created_time" TYPE="int" LENGTH="10" NOTNULL="true"/>
         <FIELD NAME="last_used" TYPE="int" LENGTH="10" NOTNULL="false"/>
@@ -43,7 +42,7 @@
         <INDEX NAME="userid_last_updated" UNIQUE="false" FIELDS="userid, last_updated"/>
       </INDEXES>
     </TABLE>
-    <TABLE NAME="block_aiassistant_messages" COMMENT="Stores individual messages within conversations">
+    <TABLE NAME="block_aiassistant_msg" COMMENT="Stores individual messages within conversations">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="conversation_id" TYPE="char" LENGTH="255" NOTNULL="true"/>
@@ -62,6 +61,57 @@
         <INDEX NAME="conv_time" UNIQUE="false" FIELDS="conversation_id, created_time"/>
         <INDEX NAME="message_type_idx" UNIQUE="false" FIELDS="message_type"/>
         <INDEX NAME="created_time_idx" UNIQUE="false" FIELDS="created_time"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="block_aiassistant_proj" COMMENT="Video annotation projects">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="true"/>
+        <FIELD NAME="description" TYPE="text" NOTNULL="false"/>
+        <FIELD NAME="created_at" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="name" UNIQUE="true" FIELDS="name"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="block_aiassistant_videos" COMMENT="Uploaded videos for annotation">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="project_id" TYPE="int" LENGTH="10" NOTNULL="true"/>
+        <FIELD NAME="filename" TYPE="char" LENGTH="255" NOTNULL="true"/>
+        <FIELD NAME="original_filename" TYPE="char" LENGTH="255" NOTNULL="true"/>
+        <FIELD NAME="file_path" TYPE="char" LENGTH="512" NOTNULL="true"/>
+        <FIELD NAME="duration" TYPE="number" LENGTH="10" NOTNULL="false" DECIMALS="2"/>
+        <FIELD NAME="created_at" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="project_id" TYPE="foreign" FIELDS="project_id" REFTABLE="block_aiassistant_proj" REFFIELDS="id"/>
+      </KEYS>
+    </TABLE>
+    <TABLE NAME="block_aiassistant_annot" COMMENT="Audio annotations with transcriptions">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="video_id" TYPE="int" LENGTH="10" NOTNULL="true"/>
+        <FIELD NAME="timestamp" TYPE="number" LENGTH="10" NOTNULL="true" DECIMALS="2"/>
+        <FIELD NAME="audio_file_path" TYPE="char" LENGTH="512" NOTNULL="true"/>
+        <FIELD NAME="transcription" TYPE="text" NOTNULL="false"/>
+        <FIELD NAME="transcription_status" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="pending"/>
+        <FIELD NAME="extended_transcript" TYPE="text" NOTNULL="false"/>
+        <FIELD NAME="extended_transcript_status" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="pending"/>
+        <FIELD NAME="feedback" TYPE="int" LENGTH="1" NOTNULL="false"/>
+        <FIELD NAME="feedback_choices" TYPE="char" LENGTH="255" NOTNULL="false"/>
+        <FIELD NAME="created_at" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="video_id" TYPE="foreign" FIELDS="video_id" REFTABLE="block_aiassistant_videos" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="timestamp" UNIQUE="false" FIELDS="timestamp"/>
       </INDEXES>
     </TABLE>
   </TABLES>
