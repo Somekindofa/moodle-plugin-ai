@@ -66,24 +66,6 @@ function xmldb_block_aiassistant_upgrade($oldversion) {
         error_log("AI Assistant: Upgrade completed successfully");
     }
 
-    // Add upgrade for Claude API key storage
-    if ($oldversion < 2025080704) {
-        error_log("AI Assistant: Adding Claude API key field");
-        
-        $table = new xmldb_table('block_aiassistant_keys');
-        
-        // Add Claude API key field
-        $field = new xmldb_field('claude_api_key', XMLDB_TYPE_TEXT, null, null, null, null, null);
-        if (!$dbman->field_exists($table, $field)) {
-            $dbman->add_field($table, $field);
-            error_log("AI Assistant: Claude API key field added successfully");
-        }
-        
-        // Aiassistant savepoint reached
-        upgrade_block_savepoint(true, 2025080704, 'aiassistant');
-        error_log("AI Assistant: Claude upgrade completed successfully");
-    }
-
     // Add upgrade for conversations table
     if ($oldversion < 2025092201) {
         error_log("AI Assistant: Creating conversations table");
