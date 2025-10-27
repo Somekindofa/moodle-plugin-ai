@@ -20,8 +20,15 @@ export const init = () => {
         const messagesContainer = document.getElementById("ai-chat-messages");
         const providerSelect = document.getElementById("ai-provider-select");
         const newConversationBtn = document.getElementById("ai-new-conversation-btn");
+        const conversationsToggle = document.getElementById("ai-conversations-toggle");
+        const conversationsPanel = document.getElementById("ai-conversations-panel");
+        const contentArea = document.getElementById("ai-content-area");
+        const motto = document.getElementById("ai-motto");
+        const resultsArea = document.getElementById("ai-results-area");
+        const documentsSection = document.getElementById("ai-documents-section");
+        const documentsList = document.getElementById("ai-documents-list");
 
-        if (!sendButton || !chatInput || !messagesContainer || !providerSelect || !newConversationBtn) {
+        if (!sendButton || !chatInput || !messagesContainer || !newConversationBtn) {
             console.error('AI Chat: Required elements not found');
             return;
         }
@@ -36,24 +43,151 @@ export const init = () => {
         loadExistingConversations();
 
         /**
-         * Displays a list of document paths in the sidepanel.
-         * Populates the sidepanel with the provided document paths.
+         * Displays a list of document paths in the documents section.
+         * Populates the documents section with the provided document paths.
          * If no documents are provided, displays a "No documents retrieved" message.
          * 
-         * @param {string[]} documentPaths - Array of document file paths to display in the sidepanel
+         * @param {string[]} documentPaths - Array of document file paths to display
          */
-        function showDocumentSidepanel(documentPaths) {
-            const content = document.getElementById('ai-sidepanel-content');
-
+        function showDocuments(documentPaths) {
+            // Check if video player already exists, don't clear it
+            const existingVideo = documentsList.querySelector('.ai-video-container');
+            
             if (documentPaths && documentPaths.length > 0) {
                 const listHTML = `
-                    <ul class="ai-document-list">
-                        ${documentPaths.map(path => `<li>${path}</li>`).join('')}
-                    </ul>
+                    <div class="ai-documents-list-section">
+                        <h4>Retrieved Documents</h4>
+                        <ul>
+                            ${documentPaths.map(path => `<li>${path}</li>`).join('')}
+                        </ul>
+                    </div>
                 `;
-                content.innerHTML = listHTML;
-            } else {
-                content.innerHTML = '<p>No documents retrieved.</p>';
+                
+                if (existingVideo) {
+                    // Append after video
+                    existingVideo.insertAdjacentHTML('afterend', listHTML);
+                } else {
+                    documentsList.innerHTML = listHTML;
+                }
+            } else if (!existingVideo) {
+                documentsList.innerHTML = '<p>No documents retrieved yet.</p>';
+            }
+        }
+
+        /**
+         * Format seconds to MM:SS display format
+         * @param {number} seconds - Time in seconds
+         * @returns {string} Formatted time string (MM:SS)
+         */
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        /**
+         * Clear video player when starting new conversation or switching conversations
+         */
+        function clearVideoPlayer() {
+            const existingVideo = documentsList.querySelector('.ai-video-container');
+            if (existingVideo) {
+                existingVideo.remove();
+            }
+        }
+
+        /**
+         * Display video segment with metadata
+         * Creates HTML5 video player with controls and seeks to specified start time
+         * @param {Object} videoMetadata - Video metadata from backend
+         * @param {string} videoMetadata.video_url - URL to video stream endpoint
+         * @param {number} videoMetadata.start_time - Segment start time in seconds
+         * @param {number} videoMetadata.end_time - Segment end time in seconds
+         * @param {string} videoMetadata.filename - Original video filename
+         */
+        function displayVideoSegment(videoMetadata) {
+            if (!videoMetadata || !videoMetadata.video_url) {
+                console.warn('Invalid video metadata received:', videoMetadata);
+                return;
+            }
+
+            const { video_url, start_time, end_time, filename } = videoMetadata;
+            
+            // Show documents section
+            if (documentsSection) {
+                documentsSection.style.display = 'block';
+            }
+            
+            // Build video URL with backend endpoint
+            // Backend is at http://127.0.0.1:8000, video_url is relative path
+            const fullVideoUrl = `http://127.0.0.1:8000${video_url}`;
+            
+            // Create video container HTML
+            const videoHTML = `
+                <div class="ai-video-container">
+                    <h4>Retrieved Video Segment</h4>
+                    <p><strong>File:</strong> ${filename}</p>
+                    <p><strong>Segment:</strong> ${formatTime(start_time)} - ${formatTime(end_time)}</p>
+                    <video id="ai-video-player" controls preload="metadata" style="width: 100%; max-height: 400px; border-radius: 4px; background: #000;">
+                        <source src="${fullVideoUrl}#t=${start_time},${end_time}" type="video/mp4">
+                        Your browser does not support video playback.
+                    </video>
+                </div>
+            `;
+            
+            // Insert at the beginning of documents list
+            documentsList.insertAdjacentHTML('afterbegin', videoHTML);
+            
+            // Get video element and configure
+            const videoPlayer = document.getElementById('ai-video-player');
+            
+            if (videoPlayer) {
+                // Seek to start time when metadata loads
+                videoPlayer.addEventListener('loadedmetadata', () => {
+                    console.log('Video metadata loaded, seeking to:', start_time);
+                    videoPlayer.currentTime = start_time;
+                });
+                
+                // Optional: Pause at end_time
+                videoPlayer.addEventListener('timeupdate', () => {
+                    if (videoPlayer.currentTime >= end_time) {
+                        videoPlayer.pause();
+                    }
+                });
+
+                // Handle video load errors
+                videoPlayer.addEventListener('error', (e) => {
+                    console.error('Video load error:', e);
+                    const errorMsg = document.createElement('p');
+                    errorMsg.style.color = 'red';
+                    errorMsg.textContent = 'Failed to load video segment. The video file may not be accessible.';
+                    videoPlayer.parentElement.appendChild(errorMsg);
+                });
+
+                console.log('Video player configured successfully');
+            }
+        }
+        
+        /**
+         * Show the results area and hide the motto
+         */
+        function showResultsArea() {
+            if (motto) {
+                motto.style.display = 'none';
+            }
+            if (resultsArea) {
+                resultsArea.style.display = 'flex';
+            }
+        }
+        
+        /**
+         * Hide the results area and show the motto
+         */
+        function hideResultsArea() {
+            if (motto) {
+                motto.style.display = 'block';
+            }
+            if (resultsArea) {
+                resultsArea.style.display = 'none';
             }
         }
 
@@ -170,7 +304,7 @@ export const init = () => {
                                 remainingConversations[0].click();
                             } else {
                                 // No conversations left, clear the chat
-                                messagesContainer.innerHTML = '<div class="ai-message"><strong>AI Assistant:</strong> Hello! How can I help you today?</div>';
+                                messagesContainer.innerHTML = '<div class="ai-message"><strong>AI Assistant:</strong> Salut ! Comment puis-je vous aider aujourd\'hui ?</div>';
                             }
                         }
                     } else {
@@ -240,43 +374,20 @@ export const init = () => {
                 console.error('AI configuration not loaded, cannot setup provider UI');
                 return;
             }
-            // Clear existing options
-            providerSelect.innerHTML = '';
-
+            
+            // Provider select is now removed, always use fireworks
             let hasAvailableProvider = false;
 
-            // Add available providers
+            // Check if provider is available
             if (aiConfig && aiConfig.fireworks_available) {
-                const fireworksOption = document.createElement('option');
-                fireworksOption.value = 'fireworks';
-                fireworksOption.textContent = 'Fireworks.ai';
-                providerSelect.appendChild(fireworksOption);
                 hasAvailableProvider = true;
+                currentProvider = 'fireworks';
             }
 
-            // If no providers are available, add disabled options
+            // If no providers are available, show error
             if (!hasAvailableProvider) {
-                if (!aiConfig || !aiConfig.fireworks_available) {
-                    const fireworksOption = document.createElement('option');
-                    fireworksOption.value = 'fireworks';
-                    fireworksOption.textContent = 'Fireworks.ai (Not configured)';
-                    fireworksOption.disabled = true;
-                    providerSelect.appendChild(fireworksOption);
-                }
-
                 showConfigurationError('No AI providers are configured. Please check plugin settings.');
                 return;
-            }
-
-            // Restore saved selections
-            const savedProvider = localStorage.getItem('ai-chat-provider');
-
-            if (savedProvider && document.querySelector(`option[value="${savedProvider}"]`)) {
-                providerSelect.value = savedProvider;
-                currentProvider = savedProvider;
-            } else if (aiConfig && aiConfig.fireworks_available) {
-                currentProvider = 'fireworks';
-                providerSelect.value = 'fireworks';
             }
         }
 
@@ -319,6 +430,9 @@ export const init = () => {
                 conversationId: currentConversationThreadId
             });
             
+            // Show results area and hide motto
+            showResultsArea();
+            
             // Add user message
             const userMessageDiv = document.createElement("div");
             userMessageDiv.className = "user-message";
@@ -328,8 +442,9 @@ export const init = () => {
             // Save user message to database
             saveMessageToDatabase(currentConversationThreadId, 'user', message);
 
-            // Clear input
+            // Clear input and reset height
             chatInput.value = "";
+            chatInput.style.height = 'auto';
 
             // Show loading state
             const loadingDiv = document.createElement("div");
@@ -380,11 +495,11 @@ export const init = () => {
             setTimeout(async function () {
                 const aiMessageDiv = document.createElement("div");
                 aiMessageDiv.className = "ai-message";
-                aiMessageDiv.innerHTML = "<strong>AI Assistant (Fireworks):</strong> <span class='response-text'></span>";
+                aiMessageDiv.innerHTML = "<strong>AI Assistant (Fireworks):</strong> <span class='response-text'><span class='ai-thinking'><span class='ai-thinking-dot'>.</span><span class='ai-thinking-dot'>.</span><span class='ai-thinking-dot'>.</span></span></span>";
                 messagesContainer.appendChild(aiMessageDiv);
                 const responseSpan = aiMessageDiv.querySelector('.response-text');
 
-                const url = 'https://127.0.0.1:8000/api/chat';
+                const url = "https://aimove.minesparis.psl.eu/api/chat";
                 const options = {
                     method: 'POST',
 
@@ -409,6 +524,7 @@ export const init = () => {
                     let retrievedDocuments = [];
                     let documentsProcessed = false;
                     let lastAIMessageContent = "";
+                    let videoMetadata = null; // Store video metadata for saving to database
                     const reader = response.body.getReader();
                     const decoder = new TextDecoder();
 
@@ -425,12 +541,28 @@ export const init = () => {
                                 console.log('Received SSE data:', data);
                                 if (data.content === '[DONE]') break;
 
+                                // Remove thinking indicator on first real content
+                                const thinkingIndicator = responseSpan.querySelector('.ai-thinking');
+                                if (thinkingIndicator) {
+                                    thinkingIndicator.remove();
+                                }
+
+                                // Handle video metadata event (process once when available)
+                                if (data.event === 'video_metadata' && data.data) {
+                                    console.log('Received video metadata:', data.data);
+                                    videoMetadata = data.data; // Store for database
+                                    displayVideoSegment(data.data);
+                                }
+
                                 // Handle documents (process once when available)
+                                // Note: We hide document sources when we have video metadata to avoid clutter
                                 if (data.documents && Array.isArray(data.documents) && data.documents.length > 0 && !documentsProcessed) {
                                     const document_sources = data.documents.map(doc => {
                                         return doc.metadata?.source || 'Unknown source';
                                     });
-                                    showDocumentSidepanel(document_sources);
+                                    // Only show documents if no video was received
+                                    // Comment out the next line if you want to hide text document sources entirely
+                                    // showDocuments(document_sources);
                                     retrievedDocuments = document_sources;
                                     documentsProcessed = true;
                                 }
@@ -482,9 +614,12 @@ export const init = () => {
                         console.log('Attempting to save AI response:', {
                             conversationId: currentConversationThreadId,
                             responseLength: aiResponse.length,
-                            responsePreview: aiResponse.substring(0, 100) + '...'
+                            responsePreview: aiResponse.substring(0, 100) + '...',
+                            hasVideoMetadata: !!videoMetadata
                         });
-                        saveMessageToDatabase(currentConversationThreadId, 'ai', aiResponse);
+                        // Store video metadata as JSON string if available
+                        const metadataStr = videoMetadata ? JSON.stringify(videoMetadata) : '';
+                        saveMessageToDatabase(currentConversationThreadId, 'ai', aiResponse, metadataStr);
                     } else {
                         console.log('No AI response to save:', {
                             aiResponse: aiResponse,
@@ -539,8 +674,10 @@ export const init = () => {
             // Set as current conversation
             currentConversationThreadId = conversationId;
 
-            // Clear chat messages
-            messagesContainer.innerHTML = '<div class="ai-message"><strong>AI Assistant:</strong> Hello! How can I help you today?</div>';
+            // Clear chat messages, video player, and hide results area
+            messagesContainer.innerHTML = '';
+            clearVideoPlayer();
+            hideResultsArea();
 
             // Add click listener to the new item
             setupConversationItemListener(newConversationItem);
@@ -658,9 +795,12 @@ export const init = () => {
             messagesContainer.innerHTML = '';
 
             if (messages.length === 0) {
-                messagesContainer.innerHTML = '<div class="ai-message"><strong>AI Assistant:</strong> Hello! How can I help you today?</div>';
+                hideResultsArea();
                 return;
             }
+
+            // Show results area if there are messages
+            showResultsArea();
 
             messages.forEach(message => {
                 const messageDiv = document.createElement('div');
@@ -676,6 +816,19 @@ export const init = () => {
                     const responseSpan = messageDiv.querySelector('.response-text');
                     if (typeof marked !== 'undefined' && marked.parse) {
                         responseSpan.innerHTML = marked.parse(message.content);
+                    }
+                    
+                    // Check if message has video metadata and display video
+                    if (message.metadata && message.metadata.trim()) {
+                        try {
+                            const videoMetadata = JSON.parse(message.metadata);
+                            if (videoMetadata.video_url) {
+                                console.log('Restoring video from metadata:', videoMetadata);
+                                displayVideoSegment(videoMetadata);
+                            }
+                        } catch (e) {
+                            console.warn('Failed to parse message metadata as JSON:', e);
+                        }
                     }
                 }
                 
@@ -715,8 +868,9 @@ export const init = () => {
                     title: conversationTitle
                 });
 
-                // Clear messages and show loading state
+                // Clear messages, video player, and show loading state
                 messagesContainer.innerHTML = '<div class="ai-message"><strong>AI Assistant:</strong> <em>Loading conversation...</em></div>';
+                clearVideoPlayer();
 
                 // Load messages from database
                 loadMessagesFromDatabase(conversationId)
@@ -725,6 +879,7 @@ export const init = () => {
                     })
                     .catch(error => {
                         console.error('Failed to load messages:', error);
+                        showResultsArea();
                         messagesContainer.innerHTML = '<div class="ai-message"><strong>AI Assistant:</strong> <em>Failed to load conversation. Please try again.</em></div>';
                     });
             });
@@ -736,6 +891,14 @@ export const init = () => {
         // Add event listeners
         newConversationBtn.addEventListener('click', createNewConversation);
         sendButton.addEventListener("click", sendMessage);
+        
+        // Toggle conversations panel
+        if (conversationsToggle && conversationsPanel) {
+            conversationsToggle.addEventListener('click', function() {
+                conversationsPanel.classList.toggle('open');
+                conversationsToggle.classList.toggle('active');
+            });
+        }
 
         /**
          * Setup conversation panel functionality
@@ -747,6 +910,19 @@ export const init = () => {
                 setupConversationItemListener(item);
             });
         }
+        // Auto-resize textarea as user types
+        function autoResizeTextarea() {
+            chatInput.style.height = 'auto'; // Reset height to recalculate
+            const lineHeight = 24; // Line height in pixels
+            const maxLines = 4;
+            const maxHeight = lineHeight * maxLines;
+            const newHeight = Math.min(chatInput.scrollHeight, maxHeight);
+            chatInput.style.height = newHeight + 'px';
+        }
+
+        // Add input event listener for auto-resize
+        chatInput.addEventListener('input', autoResizeTextarea);
+
         chatInput.addEventListener("keypress", function (e) {
             if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
