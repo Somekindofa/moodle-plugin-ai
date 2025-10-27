@@ -109,10 +109,10 @@ function xmldb_block_aiassistant_upgrade($oldversion) {
     if ($oldversion < 2025092304) {
         error_log("AI Assistant: Creating messages table");
         
-        // Define table block_aiassistant_messages to be created
-        $table = new xmldb_table('block_aiassistant_messages');
+        // Define table block_aiassistant_msg to be created
+        $table = new xmldb_table('block_aiassistant_msg');
 
-        // Adding fields to table block_aiassistant_messages
+        // Adding fields to table block_aiassistant_msg
         $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
         $table->add_field('conversation_id', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
         $table->add_field('message_type', XMLDB_TYPE_CHAR, '10', null, XMLDB_NOTNULL, null, null);
@@ -121,11 +121,11 @@ function xmldb_block_aiassistant_upgrade($oldversion) {
         $table->add_field('sequence_number', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
         $table->add_field('metadata', XMLDB_TYPE_TEXT, null, null, null, null, null);
 
-        // Adding keys to table block_aiassistant_messages
+        // Adding keys to table block_aiassistant_msg
         $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
         $table->add_key('conversation_fk', XMLDB_KEY_FOREIGN, ['conversation_id'], 'block_aiassistant_conv', ['conversation_id']);
 
-        // Adding indexes to table block_aiassistant_messages
+        // Adding indexes to table block_aiassistant_msg
         $table->add_index('conv_sequence', XMLDB_INDEX_NOTUNIQUE, ['conversation_id', 'sequence_number']);
         $table->add_index('conv_time', XMLDB_INDEX_NOTUNIQUE, ['conversation_id', 'created_time']);
         $table->add_index('message_type_idx', XMLDB_INDEX_NOTUNIQUE, ['message_type']);
@@ -142,6 +142,128 @@ function xmldb_block_aiassistant_upgrade($oldversion) {
         // Aiassistant savepoint reached
         upgrade_block_savepoint(true, 2025092304, 'aiassistant');
         error_log("AI Assistant: Messages table upgrade completed successfully");
+    }
+
+    // Add upgrade for video annotation tables
+    if ($oldversion < 2025101901) {
+        error_log("AI Assistant: Creating video annotation tables");
+        
+        // Define table block_aiassistant_proj
+        $table = new xmldb_table('block_aiassistant_proj');
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('name', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('description', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('created_at', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_index('name', XMLDB_INDEX_UNIQUE, ['name']);
+
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+            error_log("AI Assistant: Projects table created successfully");
+        }
+
+        // Define table block_aiassistant_videos
+        $table = new xmldb_table('block_aiassistant_videos');
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('project_id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('filename', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('original_filename', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('file_path', XMLDB_TYPE_CHAR, '512', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('duration', XMLDB_TYPE_NUMBER, '10, 2', null, null, null, null);
+        $table->add_field('created_at', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('project_id', XMLDB_KEY_FOREIGN, ['project_id'], 'block_aiassistant_proj', ['id']);
+
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+            error_log("AI Assistant: Videos table created successfully");
+        }
+
+        // Define table block_aiassistant_annot
+        $table = new xmldb_table('block_aiassistant_annot');
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('video_id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('timestamp', XMLDB_TYPE_NUMBER, '10, 2', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('audio_file_path', XMLDB_TYPE_CHAR, '512', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('transcription', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('transcription_status', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, 'pending');
+        $table->add_field('extended_transcript', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('extended_transcript_status', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, 'pending');
+        $table->add_field('feedback', XMLDB_TYPE_INTEGER, '1', null, null, null, null);
+        $table->add_field('feedback_choices', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+        $table->add_field('created_at', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('video_id', XMLDB_KEY_FOREIGN, ['video_id'], 'block_aiassistant_videos', ['id']);
+        $table->add_index('timestamp', XMLDB_INDEX_NOTUNIQUE, ['timestamp']);
+
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+            error_log("AI Assistant: Annotations table created successfully");
+        }
+
+        // Aiassistant savepoint reached
+        upgrade_block_savepoint(true, 2025101901, 'aiassistant');
+        error_log("AI Assistant: Video annotation tables upgrade completed successfully");
+    }
+
+    // Add upgrade to rename tables that exceed 28 character limit
+    if ($oldversion < 2025102001) {
+        error_log("AI Assistant: Renaming tables to comply with 28 character limit");
+        
+        // Handle block_aiassistant_messages -> block_aiassistant_msg
+        $oldtable = new xmldb_table('block_aiassistant_messages');
+        $newtable = new xmldb_table('block_aiassistant_msg');
+        if ($dbman->table_exists($oldtable) && !$dbman->table_exists($newtable)) {
+            // Old table exists, new doesn't - rename it
+            $dbman->rename_table($oldtable, 'block_aiassistant_msg');
+            error_log("AI Assistant: Renamed block_aiassistant_messages to block_aiassistant_msg");
+        } else if ($dbman->table_exists($newtable) && $dbman->table_exists($oldtable)) {
+            // Both exist - drop the old one (new one was created by previous upgrade attempt)
+            $dbman->drop_table($oldtable);
+            error_log("AI Assistant: Dropped old table block_aiassistant_messages (new table already exists)");
+        } else if (!$dbman->table_exists($oldtable) && !$dbman->table_exists($newtable)) {
+            error_log("AI Assistant: Neither old nor new messages table exists, will be created by previous upgrade step");
+        } else {
+            error_log("AI Assistant: Messages table already correctly named as block_aiassistant_msg");
+        }
+        
+        // Handle block_aiassistant_projects -> block_aiassistant_proj
+        $oldtable = new xmldb_table('block_aiassistant_projects');
+        $newtable = new xmldb_table('block_aiassistant_proj');
+        if ($dbman->table_exists($oldtable) && !$dbman->table_exists($newtable)) {
+            // Old table exists, new doesn't - rename it
+            $dbman->rename_table($oldtable, 'block_aiassistant_proj');
+            error_log("AI Assistant: Renamed block_aiassistant_projects to block_aiassistant_proj");
+        } else if ($dbman->table_exists($newtable) && $dbman->table_exists($oldtable)) {
+            // Both exist - drop the old one (new one was created by previous upgrade attempt)
+            $dbman->drop_table($oldtable);
+            error_log("AI Assistant: Dropped old table block_aiassistant_projects (new table already exists)");
+        } else if (!$dbman->table_exists($oldtable) && !$dbman->table_exists($newtable)) {
+            error_log("AI Assistant: Neither old nor new projects table exists, will be created by previous upgrade step");
+        } else {
+            error_log("AI Assistant: Projects table already correctly named as block_aiassistant_proj");
+        }
+        
+        // Handle block_aiassistant_annotations -> block_aiassistant_annot
+        $oldtable = new xmldb_table('block_aiassistant_annotations');
+        $newtable = new xmldb_table('block_aiassistant_annot');
+        if ($dbman->table_exists($oldtable) && !$dbman->table_exists($newtable)) {
+            // Old table exists, new doesn't - rename it
+            $dbman->rename_table($oldtable, 'block_aiassistant_annot');
+            error_log("AI Assistant: Renamed block_aiassistant_annotations to block_aiassistant_annot");
+        } else if ($dbman->table_exists($newtable) && $dbman->table_exists($oldtable)) {
+            // Both exist - drop the old one (new one was created by previous upgrade attempt)
+            $dbman->drop_table($oldtable);
+            error_log("AI Assistant: Dropped old table block_aiassistant_annotations (new table already exists)");
+        } else if (!$dbman->table_exists($oldtable) && !$dbman->table_exists($newtable)) {
+            error_log("AI Assistant: Neither old nor new annotations table exists, will be created by previous upgrade step");
+        } else {
+            error_log("AI Assistant: Annotations table already correctly named as block_aiassistant_annot");
+        }
+        
+        // Aiassistant savepoint reached
+        upgrade_block_savepoint(true, 2025102001, 'aiassistant');
+        error_log("AI Assistant: Table renaming upgrade completed successfully");
     }
 
     return true;

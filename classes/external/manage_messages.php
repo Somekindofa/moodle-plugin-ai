@@ -63,8 +63,8 @@ class manage_messages extends external_api {
 
         try {
             // Check if database tables exist
-            if (!$DB->get_manager()->table_exists('block_aiassistant_messages')) {
-                return self::error_response('Database table block_aiassistant_messages does not exist');
+            if (!$DB->get_manager()->table_exists('block_aiassistant_msg')) {
+                return self::error_response('Database table block_aiassistant_msg does not exist');
             }
 
             if (!$DB->get_manager()->table_exists('block_aiassistant_conv')) {
@@ -123,7 +123,7 @@ class manage_messages extends external_api {
         try {
             // Get next sequence number for this conversation
             $next_sequence = $DB->get_field_sql(
-                'SELECT COALESCE(MAX(sequence_number), 0) + 1 FROM {block_aiassistant_messages} WHERE conversation_id = ?',
+                'SELECT COALESCE(MAX(sequence_number), 0) + 1 FROM {block_aiassistant_msg} WHERE conversation_id = ?',
                 [$conversation_id]
             );
 
@@ -135,7 +135,7 @@ class manage_messages extends external_api {
             $record->sequence_number = $next_sequence;
             $record->metadata = $metadata;
 
-            $id = $DB->insert_record('block_aiassistant_messages', $record);
+            $id = $DB->insert_record('block_aiassistant_msg', $record);
 
             // Update conversation's last_updated timestamp
             self::update_conversation_timestamp($conversation_id);
@@ -171,7 +171,7 @@ class manage_messages extends external_api {
         }
 
         try {
-            $messages = $DB->get_records('block_aiassistant_messages', [
+            $messages = $DB->get_records('block_aiassistant_msg', [
                 'conversation_id' => $conversation_id
             ], 'sequence_number ASC');
 
