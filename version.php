@@ -9,7 +9,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'block_aiassistant';
-$plugin->version = 2025102700; // Updated version to force Moodle upgrade for messages table
+$plugin->version = 2025102702; // Updated version to force Moodle upgrade for messages table
 $plugin->requires = 2022041900; // Moodle 4.1
 $plugin->maturity = MATURITY_STABLE;
 $plugin->release = '0.4.1'; // Table name length fixes
