@@ -23,25 +23,6 @@ use context_system;
  */
 class get_ai_config extends external_api {
 
-    /** @var array Available Claude models */
-    private const CLAUDE_MODELS = [
-        [
-            'key' => 'claude-opus-4-1-20250805',
-            'name' => 'Claude Opus 4.1'
-        ],
-        [
-            'key' => 'claude-sonnet-4-20250514', 
-            'name' => 'Claude Sonnet 4'
-        ],
-        [
-            'key' => 'claude-3-5-haiku-latest',
-            'name' => 'Claude Haiku'
-        ]
-    ];
-
-    /** @var string Default Claude model */
-    private const DEFAULT_CLAUDE_MODEL = 'claude-sonnet-4-20250514';
-
     /**
      * Describes the parameters for get_ai_config
      */
@@ -61,9 +42,6 @@ class get_ai_config extends external_api {
         try {
             $config = [
                 'success' => true,
-                'claude_models' => self::CLAUDE_MODELS,
-                'default_claude_model' => self::get_default_claude_model(),
-                'claude_available' => self::is_claude_configured(),
                 'fireworks_available' => self::is_fireworks_configured(),
                 'message' => 'Configuration retrieved successfully'
             ];
@@ -76,42 +54,12 @@ class get_ai_config extends external_api {
             
             return [
                 'success' => false,
-                'claude_models' => [],
-                'default_claude_model' => self::DEFAULT_CLAUDE_MODEL,
-                'claude_available' => false,
                 'fireworks_available' => false,
                 'message' => 'Failed to get configuration: ' . $e->getMessage()
             ];
         }
     }
-
-    /**
-     * Get default Claude model from config
-     */
-    private static function get_default_claude_model(): string {
-        $default_model = get_config('block_aiassistant', 'claude_default_model');
-        
-        if (empty($default_model)) {
-            return self::DEFAULT_CLAUDE_MODEL;
-        }
-        
-        // Ensure it's a valid model
-        $valid_models = array_column(self::CLAUDE_MODELS, 'key');
-        if (!in_array($default_model, $valid_models)) {
-            return self::DEFAULT_CLAUDE_MODEL;
-        }
-        
-        return $default_model;
-    }
-
-    /**
-     * Check if Claude API is configured
-     */
-    private static function is_claude_configured(): bool {
-        $claude_api_key = get_config('block_aiassistant', 'claude_api_key');
-        return !empty($claude_api_key);
-    }
-
+    
     /**
      * Check if Fireworks API is configured
      */
@@ -145,15 +93,6 @@ class get_ai_config extends external_api {
     public static function get_ai_config_returns() {
         return new external_single_structure([
             'success' => new external_value(PARAM_BOOL, 'Whether the operation was successful'),
-            'claude_models' => new external_multiple_structure(
-                new external_single_structure([
-                    'key' => new external_value(PARAM_TEXT, 'Model key'),
-                    'name' => new external_value(PARAM_TEXT, 'Human readable model name')
-                ]),
-                'Available Claude models'
-            ),
-            'default_claude_model' => new external_value(PARAM_TEXT, 'Default Claude model key'),
-            'claude_available' => new external_value(PARAM_BOOL, 'Whether Claude API is configured'),
             'fireworks_available' => new external_value(PARAM_BOOL, 'Whether Fireworks is configured'),
             'message' => new external_value(PARAM_TEXT, 'Status message')
         ]);
