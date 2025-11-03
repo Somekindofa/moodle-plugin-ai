@@ -9,7 +9,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'block_aiassistant';
-$plugin->version = 2025102003; // Updated version for table name fixes (28 char limit)
+$plugin->version = 20251103001; // Updated version for table name fixes (28 char limit)
 $plugin->requires = 2022041900; // Moodle 4.1
 $plugin->maturity = MATURITY_STABLE;
 $plugin->release = '0.4.1'; // Table name length fixes
