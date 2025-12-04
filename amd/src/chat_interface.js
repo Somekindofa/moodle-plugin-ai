@@ -6,6 +6,7 @@
  */
 
 import * as Ajax from 'core/ajax';
+import * as types from './types'
 
 /**
  * Initialize the AI chat interface
@@ -492,151 +493,77 @@ export const init = () => {
          * @param {string} message - The message to send
          */
         async function sendFireworksChatMessage(message, currentConversationThreadId) {
-            setTimeout(async function () {
-                const aiMessageDiv = document.createElement("div");
-                aiMessageDiv.className = "ai-message";
-                aiMessageDiv.innerHTML = "<strong>AI Assistant (Fireworks):</strong> <span class='response-text'><span class='ai-thinking'><span class='ai-thinking-dot'>.</span><span class='ai-thinking-dot'>.</span><span class='ai-thinking-dot'>.</span></span></span>";
-                messagesContainer.appendChild(aiMessageDiv);
-                const responseSpan = aiMessageDiv.querySelector('.response-text');
+            const aiMessageDiv = document.createElement("div");
+            aiMessageDiv.className = "ai-message";
+            aiMessageDiv.innerHTML = "<strong>AI Assistant (Fireworks):</strong> <span class='response-text'><span class='ai-thinking'><span class='ai-thinking-dot'>.</span><span class='ai-thinking-dot'>.</span><span class='ai-thinking-dot'>.</span></span></span>";
+            messagesContainer.appendChild(aiMessageDiv);
+            const responseSpan = aiMessageDiv.querySelector('.response-text');
 
-                const url = "https://aimove.minesparis.psl.eu/api/chat";
-                const options = {
-                    method: 'POST',
+            const url = "https://aimove.minesparis.psl.eu/api/chat";
+            const options = {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    "message": message,
+                    "conversation_thread_id": currentConversationThreadId
+                })
+            };
 
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        "message": message,
-                        "conversation_thread_id": currentConversationThreadId
-                    })
-                };
+            try {
+                const response = await fetch(url, options);
+                console.log('Fetch response status:', response.status, response.statusText);
 
-                try {
-                    const response = await fetch(url, options);
-                    console.log('Fetch response status:', response.status, response.statusText);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                /** @type {ConversationState} */
+                const data = await response.json()
 
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                    }
-                    // Handle Server-Sent Events (SSE) response
-                    let aiResponse = '';
-                    let retrievedDocuments = [];
-                    let documentsProcessed = false;
-                    let lastAIMessageContent = "";
-                    let videoMetadata = null; // Store video metadata for saving to database
-                    const reader = response.body.getReader();
-                    const decoder = new TextDecoder();
-
-                    while (true) {
-                        const { done, value } = await reader.read();
-                        if (done) break;
-
-                        const lines = decoder.decode(value, { stream: true }).split('\n');
-                        console.log('Received chunk:', lines);
-                        for (const line of lines) {
-                            if (!line.trim()) continue;
-                            try {
-                                const data = JSON.parse(line);
-                                console.log('Received SSE data:', data);
-                                if (data.content === '[DONE]') break;
-
-                                // Remove thinking indicator on first real content
-                                const thinkingIndicator = responseSpan.querySelector('.ai-thinking');
-                                if (thinkingIndicator) {
-                                    thinkingIndicator.remove();
-                                }
-
-                                // Handle video metadata event (process once when available)
-                                if (data.event === 'video_metadata' && data.data) {
-                                    console.log('Received video metadata:', data.data);
-                                    videoMetadata = data.data; // Store for database
-                                    displayVideoSegment(data.data);
-                                }
-
-                                // Handle documents (process once when available)
-                                // Note: We hide document sources when we have video metadata to avoid clutter
-                                if (data.documents && Array.isArray(data.documents) && data.documents.length > 0 && !documentsProcessed) {
-                                    const document_sources = data.documents.map(doc => {
-                                        return doc.metadata?.source || 'Unknown source';
-                                    });
-                                    // Only show documents if no video was received
-                                    // Comment out the next line if you want to hide text document sources entirely
-                                    // showDocuments(document_sources);
-                                    retrievedDocuments = document_sources;
-                                    documentsProcessed = true;
-                                }
-
-                                // Handle content from stream_mode="values" (array of messages)
-                                if (data.content && Array.isArray(data.content)) {
-                                    // Find the latest AI message in the messages array
-                                    for (const msg of data.content) {
-                                        // Check for AIMessage type and extract content
-                                        if (msg.content && (msg.type === 'ai' || msg.__class__ === 'AIMessage' || typeof msg.content === 'string')) {
-                                            const currentAIContent = msg.content;
-                                            // Only update if the AI message content has changed
-                                            if (currentAIContent !== lastAIMessageContent) {
-                                                aiResponse = currentAIContent; // Replace with latest complete AI message
-                                                responseSpan.textContent = aiResponse;
-                                                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-
-                                                // Convert markdown to HTML if marked is available
-                                                if (typeof marked !== 'undefined' && marked.parse) {
-                                                    const html_content = marked.parse(responseSpan.textContent);
-                                                    responseSpan.innerHTML = html_content;
-                                                }
-
-                                                lastAIMessageContent = currentAIContent;
-                                            }
-                                        }
-                                    }
-                                }
-                                // Fallback for stream_mode="messages" (direct string content)
-                                else if (data.content && typeof data.content === 'string') {
-                                    aiResponse += data.content;
-                                    responseSpan.textContent = aiResponse;
-                                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-
-                                    if (typeof marked !== 'undefined' && marked.parse) {
-                                        const htmlContent = marked.parse(responseSpan.textContent);
-                                        responseSpan.innerHTML = htmlContent;
-                                    }
-                                }
-
-                                if (data.error) throw new Error(data.error);
-                            } catch (e) {
-                                console.error('Parse error:', e);
-                            }
-                        }
-                    }
-                    // Save AI response to database if we have content
-                    if (aiResponse && aiResponse.trim()) {
-                        console.log('Attempting to save AI response:', {
-                            conversationId: currentConversationThreadId,
-                            responseLength: aiResponse.length,
-                            responsePreview: aiResponse.substring(0, 100) + '...',
-                            hasVideoMetadata: !!videoMetadata
-                        });
-                        // Store video metadata as JSON string if available
-                        const metadataStr = videoMetadata ? JSON.stringify(videoMetadata) : '';
-                        saveMessageToDatabase(currentConversationThreadId, 'ai', aiResponse, metadataStr);
-                    } else {
-                        console.log('No AI response to save:', {
-                            aiResponse: aiResponse,
-                            conversationId: currentConversationThreadId
-                        });
-                    }
-
-                } catch (error) {
-                    console.error('FastAPI call failed:', error);
-                    responseSpan.textContent = 'Sorry, there was an error processing your request: ' + error.message;
+                // remove thinking indicator
+                const thinkingIndicator = responseSpan.querySelector(".ai-thinking");
+                if (thinkingIndicator) {
+                    thinkingIndicator.remove();
                 }
 
-                
+                // handling video metadata if any
+                if (data.video_metadata) {
+                    console.log("Received video metadata: ", data.video_metadata);
+                    displayVideoSegment(data.video_metadata);
+                }
 
-                // Final scroll to bottom
+                const aiMessage = data.messages || "Sorry, no response generated.";
+                responseSpan.textContent = aiMessage;
+
+                // Markdown conversion
+                if (typeof marked !== "undefined" && marked.parse) {
+                    try {
+                        const htmlContent = marked.parse(aiMessage);
+                        responseSpan.innerHTML = htmlContent;
+                    } catch (e) {
+                        console.error("Markdown parsing failed: ", e);
+                    }
+                }
+
+                if (aiMessage && aiMessage.trim()) {
+                    const metadataStr = data.video_metadata ? JSON.stringify(data.video_metadata) : "";
+                    saveMessageToDatabase(currentConversationThreadId, "ai", aiMessage, metadataStr);
+                    console.log("Saved message to database.");
+                }
+
+                // Scroll to bottom
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            }, 1000);
+
+            } catch (error) {
+                console.error("Request failed: ", error);
+                const thinkingIndicator = responseSpan.querySelector(".ai-thinking");
+                if (thinkingIndicator) {
+                    thinkingIndicator.remove();
+                }
+                responseSpan.textContent = "Sorry, there was an error processing your request: " + error.message;
+                responseSpan.style.color = "red";
+            }
         }
 
         /**
