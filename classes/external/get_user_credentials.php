@@ -1,7 +1,7 @@
 <?php
 // This file is part of Moodle - http://moodle.org/
 
-namespace block_aiassistant\external;
+namespace mod_aiassistant\external;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -12,13 +12,13 @@ use external_function_parameters;
 use external_value;
 use external_single_structure;
 use context_system;
-use block_aiassistant\credential_service;
+use mod_aiassistant\credential_service;
 
 /**
  * External API for getting user credentials
  * 
- * @package    block_aiassistant
- * @copyright  2025 Your Organization
+ * @package    mod_aiassistant
+ * @copyright  2025
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class get_user_credentials extends external_api {
@@ -52,8 +52,8 @@ class get_user_credentials extends external_api {
 
         try {
             // Check if database table exists
-            if (!$DB->get_manager()->table_exists('block_aiassistant_keys')) {
-                return self::error_response('Database table block_aiassistant_keys does not exist');
+            if (!$DB->get_manager()->table_exists('aiassistant_keys')) {
+                return self::error_response('Database table aiassistant_keys does not exist');
             }
 
             return self::get_fireworks_credentials($USER->id);
@@ -75,7 +75,7 @@ class get_user_credentials extends external_api {
         self::log_debug("Getting Fireworks credentials for user {$user_id} (master key approach)");
 
         // Get the master Fireworks API key from plugin settings
-        $fireworks_api_key = get_config('block_aiassistant', 'fireworks_api_key');
+        $fireworks_api_key = get_config('mod_aiassistant', 'fireworks_api_key');
         
         if (empty($fireworks_api_key)) {
             self::log_debug('Fireworks master API key not configured');
