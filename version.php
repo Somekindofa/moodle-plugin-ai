@@ -25,7 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'mod_aiassistant';
-$plugin->version = 2025121100; // Converted from block to mod plugin
+$plugin->version = 2025121101; // Converted from block to mod plugin
 $plugin->requires = 2022041900; // Moodle 4.1
 $plugin->maturity = MATURITY_ALPHA;
 $plugin->release = '1.0.0-alpha'; // First mod release
