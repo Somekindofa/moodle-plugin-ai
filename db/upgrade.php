@@ -11,12 +11,12 @@ defined('MOODLE_INTERNAL') || die();
 require_once($CFG->libdir.'/ddllib.php'); // Include ddllib for xmldb constants
 
 /**
- * Upgrade script for block_aiassistant
+ * Upgrade script for mod_aiassistant
  *
  * @param int $oldversion the version we are upgrading from
  * @return bool result
  */
-function xmldb_block_aiassistant_upgrade($oldversion) {
+function xmldb_aiassistant_upgrade($oldversion) {
     global $DB;
     
     $dbman = $DB->get_manager();
@@ -62,7 +62,7 @@ function xmldb_block_aiassistant_upgrade($oldversion) {
         }
 
         // Aiassistant savepoint reached
-        upgrade_block_savepoint(true, 2025072910, 'aiassistant');
+        upgrade_module_savepoint(true, 2025072910, 'aiassistant');
         error_log("AI Assistant: Upgrade completed successfully");
     }
 
@@ -101,7 +101,7 @@ function xmldb_block_aiassistant_upgrade($oldversion) {
         }
 
         // Aiassistant savepoint reached
-        upgrade_block_savepoint(true, 2025092201, 'aiassistant');
+        upgrade_module_savepoint(true, 2025092201, 'aiassistant');
         error_log("AI Assistant: Conversations table upgrade completed successfully");
     }
 
@@ -140,7 +140,7 @@ function xmldb_block_aiassistant_upgrade($oldversion) {
         }
 
         // Aiassistant savepoint reached
-        upgrade_block_savepoint(true, 2025092304, 'aiassistant');
+        upgrade_module_savepoint(true, 2025092304, 'aiassistant');
         error_log("AI Assistant: Messages table upgrade completed successfully");
     }
 
@@ -202,7 +202,7 @@ function xmldb_block_aiassistant_upgrade($oldversion) {
         }
 
         // Aiassistant savepoint reached
-        upgrade_block_savepoint(true, 2025101901, 'aiassistant');
+        upgrade_module_savepoint(true, 2025101901, 'aiassistant');
         error_log("AI Assistant: Video annotation tables upgrade completed successfully");
     }
 
@@ -262,7 +262,7 @@ function xmldb_block_aiassistant_upgrade($oldversion) {
         }
         
         // Aiassistant savepoint reached
-        upgrade_block_savepoint(true, 2025102001, 'aiassistant');
+        upgrade_module_savepoint(true, 2025102001, 'aiassistant');
         error_log("AI Assistant: Table renaming upgrade completed successfully");
     }
 
