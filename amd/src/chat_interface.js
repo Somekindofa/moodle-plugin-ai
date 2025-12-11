@@ -246,21 +246,19 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
             args: {}
         }])[0]
             .then((response) => {
-                if (!response.success || !response.fireworks_api_key) {
+                if (!response.success || !response.api_key) {
                     loadingDiv.innerHTML = '<strong>AI Assistant:</strong> <em style="color: red;">Error: Fireworks API key not configured</em>';
                     chatInput.disabled = false;
                     sendButton.disabled = false;
                     return;
                 }
 
-                const apiKey = response.fireworks_api_key;
+                const apiKey = response.api_key;
                 
                 // Prepare request
                 const requestBody = {
                     message: userMessage,
-                    conversation_id: currentConversationId,
-                    api_key: apiKey,
-                    instance_id: instanceId
+                    conversation_thread_id: currentConversationId
                 };
 
                 // Stream response from RAG backend
