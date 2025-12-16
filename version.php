@@ -15,17 +15,17 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Version metadata for the mod_aiassistant plugin.
+ * Version metadata for the mod_craftpilot plugin.
  *
- * @package   mod_aiassistant
+ * @package   mod_craftpilot
  * @copyright 2025
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->component = 'mod_aiassistant';
-$plugin->version = 2025121101; // Converted from block to mod plugin
+$plugin->component = 'mod_craftpilot';
+$plugin->version = 2025121601; // Renamed from aiassistant to craftpilot
 $plugin->requires = 2022041900; // Moodle 4.1
 $plugin->maturity = MATURITY_ALPHA;
 $plugin->release = '1.0.0-alpha'; // First mod release
