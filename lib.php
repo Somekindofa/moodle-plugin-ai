@@ -15,9 +15,9 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Library functions for the mod_aiassistant plugin.
- *
- * @package   mod_aiassistant
+ * Library functions for the mod_craftpilot plugin.
+
+ * @package   mod_craftpilot
  * @copyright 2025
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -30,7 +30,7 @@ defined('MOODLE_INTERNAL') || die();
  * @param string $feature FEATURE_xx constant for requested feature
  * @return mixed True if module supports feature, false if not, null if doesn't know
  */
-function aiassistant_supports($feature) {
+function craftpilot_supports($feature) {
     switch($feature) {
         case FEATURE_MOD_ARCHETYPE:
             return MOD_ARCHETYPE_RESOURCE;
@@ -61,10 +61,10 @@ function aiassistant_supports($feature) {
  * Add a new AI Assistant instance to the database.
  *
  * @param stdClass $data Form data with instance configuration
- * @param mod_aiassistant_mod_form $mform The form object (optional)
+ * @param mod_craftpilot_mod_form $mform The form object (optional)
  * @return int New instance ID
  */
-function aiassistant_add_instance($data, $mform = null) {
+function craftpilot_add_instance($data, $mform = null) {
     global $DB;
 
     $data->timemodified = time();
@@ -76,7 +76,7 @@ function aiassistant_add_instance($data, $mform = null) {
     }
     
     // Insert the instance
-    $data->id = $DB->insert_record('aiassistant', $data);
+    $data->id = $DB->insert_record('craftpilot', $data);
     
     // Handle file uploads for content
     if ($mform) {
@@ -85,18 +85,18 @@ function aiassistant_add_instance($data, $mform = null) {
         $data->content = file_save_draft_area_files(
             $draftitemid,
             $context->id,
-            'mod_aiassistant',
+            'mod_craftpilot',
             'content',
             0,
             ['subdirs' => true],
             $data->content
         );
-        $DB->update_record('aiassistant', $data);
+        $DB->update_record('craftpilot', $data);
     }
     
     // Update completion date event
     $completionexpected = (!empty($data->completionexpected)) ? $data->completionexpected : null;
-    \core_completion\api::update_completion_date_event($data->coursemodule, 'aiassistant', $data->id, $completionexpected);
+    \core_completion\api::update_completion_date_event($data->coursemodule, 'craftpilot', $data->id, $completionexpected);
     
     return $data->id;
 }
@@ -105,10 +105,10 @@ function aiassistant_add_instance($data, $mform = null) {
  * Update an existing AI Assistant instance.
  *
  * @param stdClass $data Form data with instance configuration
- * @param mod_aiassistant_mod_form $mform The form object (optional)
+ * @param mod_craftpilot_mod_form $mform The form object (optional)
  * @return bool True on success
  */
-function aiassistant_update_instance($data, $mform = null) {
+function craftpilot_update_instance($data, $mform = null) {
     global $DB;
 
     $data->timemodified = time();
@@ -121,7 +121,7 @@ function aiassistant_update_instance($data, $mform = null) {
     }
     
     // Update the instance
-    $DB->update_record('aiassistant', $data);
+    $DB->update_record('craftpilot', $data);
     
     // Handle file uploads for content
     if ($mform) {
@@ -130,18 +130,18 @@ function aiassistant_update_instance($data, $mform = null) {
         $data->content = file_save_draft_area_files(
             $draftitemid,
             $context->id,
-            'mod_aiassistant',
+            'mod_craftpilot',
             'content',
             0,
             ['subdirs' => true],
             $data->content
         );
-        $DB->update_record('aiassistant', $data);
+        $DB->update_record('craftpilot', $data);
     }
     
     // Update completion date event
     $completionexpected = (!empty($data->completionexpected)) ? $data->completionexpected : null;
-    \core_completion\api::update_completion_date_event($data->coursemodule, 'aiassistant', $data->id, $completionexpected);
+    \core_completion\api::update_completion_date_event($data->coursemodule, 'craftpilot', $data->id, $completionexpected);
     
     return true;
 }
@@ -152,30 +152,30 @@ function aiassistant_update_instance($data, $mform = null) {
  * @param int $id Instance ID to delete
  * @return bool True on success
  */
-function aiassistant_delete_instance($id) {
+function craftpilot_delete_instance($id) {
     global $DB;
 
-    if (!$instance = $DB->get_record('aiassistant', ['id' => $id])) {
+    if (!$instance = $DB->get_record('craftpilot', ['id' => $id])) {
         return false;
     }
 
     // Delete all conversations associated with this instance
-    $conversations = $DB->get_records('aiassistant_conv', ['instanceid' => $id]);
+    $conversations = $DB->get_records('craftpilot_conv', ['instanceid' => $id]);
     foreach ($conversations as $conversation) {
         // Delete all messages in this conversation
-        $DB->delete_records('aiassistant_msg', ['conversation_id' => $conversation->conversation_id]);
+        $DB->delete_records('craftpilot_msg', ['conversation_id' => $conversation->conversation_id]);
     }
     
     // Delete the conversations
-    $DB->delete_records('aiassistant_conv', ['instanceid' => $id]);
+    $DB->delete_records('craftpilot_conv', ['instanceid' => $id]);
     
     // Delete the instance
-    $DB->delete_records('aiassistant', ['id' => $id]);
+    $DB->delete_records('craftpilot', ['id' => $id]);
     
     // Delete completion events
-    $cm = get_coursemodule_from_instance('aiassistant', $id);
+    $cm = get_coursemodule_from_instance('craftpilot', $id);
     if ($cm) {
-        \core_completion\api::update_completion_date_event($cm->id, 'aiassistant', $id, null);
+        \core_completion\api::update_completion_date_event($cm->id, 'craftpilot', $id, null);
     }
     
     return true;
@@ -187,10 +187,10 @@ function aiassistant_delete_instance($id) {
  * @param stdClass $coursemodule
  * @return cached_cm_info Info to customize main page display
  */
-function aiassistant_get_coursemodule_info($coursemodule) {
+function craftpilot_get_coursemodule_info($coursemodule) {
     global $DB;
 
-    if (!$instance = $DB->get_record('aiassistant', ['id' => $coursemodule->instance], 'id, name, intro, introformat')) {
+    if (!$instance = $DB->get_record('craftpilot', ['id' => $coursemodule->instance], 'id, name, intro, introformat')) {
         return null;
     }
 
@@ -199,7 +199,7 @@ function aiassistant_get_coursemodule_info($coursemodule) {
 
     if ($coursemodule->showdescription) {
         // Convert intro to html and add to coursepage.
-        $info->content = format_module_intro('aiassistant', $instance, $coursemodule->id, false);
+        $info->content = format_module_intro('craftpilot', $instance, $coursemodule->id, false);
     }
 
     return $info;
