@@ -19,7 +19,17 @@ class credential_service {
      * @return string|null The Fireworks API key or null if not configured
      */
     public static function get_fireworks_api_key(): ?string {
+        // Primary: module setting
         $api_key = get_config('mod_aiassistant', 'fireworks_api_key');
+
+        // Fallback: legacy block setting (kept for backward compatibility)
+        if (empty($api_key)) {
+            $api_key = get_config('block_aiassistant', 'fireworks_api_key');
+            if (!empty($api_key)) {
+                self::log_debug("Fireworks API key found in legacy block setting, length: " . strlen($api_key));
+                return $api_key;
+            }
+        }
         
         if (!empty($api_key)) {
             self::log_debug("Fireworks API key found, length: " . strlen($api_key));
