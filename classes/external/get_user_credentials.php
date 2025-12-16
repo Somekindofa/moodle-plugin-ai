@@ -33,10 +33,10 @@ class get_user_credentials extends external_api {
     }
 
     /**
-     * Get or create user credentials
+     * Get global API credentials for the specified provider
      */
     public static function get_user_credentials($provider = 'fireworks') {
-        global $USER, $DB;
+        global $USER;
 
         // Validate parameters
         $params = self::validate_parameters(self::get_user_credentials_parameters(), [
@@ -48,48 +48,34 @@ class get_user_credentials extends external_api {
         self::validate_context($context);
         require_login();
 
-        self::log_debug("Getting credentials for user {$USER->id} with provider {$params['provider']}");
+        self::log_debug("Getting global API key for user {$USER->id} with provider {$params['provider']}");
 
         try {
-            // Check if database table exists
-            if (!$DB->get_manager()->table_exists('aiassistant_keys')) {
-                return self::error_response('Database table aiassistant_keys does not exist');
+            // Get the global Fireworks API key using credential service
+            $api_key = credential_service::get_fireworks_api_key();
+            
+            if (empty($api_key)) {
+                self::log_debug('Fireworks API key not configured in settings');
+                return self::error_response('Fireworks API key not configured. Please check plugin settings.');
             }
 
-            return self::get_fireworks_credentials($USER->id);
+            self::log_debug("Fireworks API key found, length: " . strlen($api_key));
+
+            return [
+                'success' => true,
+                'api_key' => $api_key,
+                'display_name' => 'Global Fireworks API Key',
+                'message' => 'Using global Fireworks API key'
+            ];
 
         } catch (\Exception $e) {
-            self::log_error('Failed to get user credentials', $e, [
+            self::log_error('Failed to get API credentials', $e, [
                 'user_id' => $USER->id,
                 'provider' => $params['provider']
             ]);
             
             return self::error_response('Failed to get credentials: ' . $e->getMessage());
         }
-    }
-
-    /**
-     * Get Fireworks API credentials (using master key approach)
-     */
-    private static function get_fireworks_credentials(int $user_id): array {
-        self::log_debug("Getting Fireworks credentials for user {$user_id} (master key approach)");
-
-        // Get the master Fireworks API key from plugin settings
-        $fireworks_api_key = get_config('mod_aiassistant', 'fireworks_api_key');
-        
-        if (empty($fireworks_api_key)) {
-            self::log_debug('Fireworks master API key not configured');
-            return self::error_response('Fireworks API key not configured. Please check plugin settings.');
-        }
-
-        self::log_debug("Fireworks master API key found, length: " . strlen($fireworks_api_key));
-
-        return [
-            'success' => true,
-            'api_key' => $fireworks_api_key,
-            'display_name' => "fireworks-user-{$user_id}",
-            'message' => 'Using master Fireworks API key'
-        ];
     }
 
     /**
