@@ -15,9 +15,9 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * External functions and services for the mod_aiassistant plugin.
+ * External functions and services for the mod_craftpilot plugin.
  *
- * @package   mod_aiassistant
+ * @package   mod_craftpilot
  * @copyright 2025
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -25,24 +25,24 @@
 defined('MOODLE_INTERNAL') || die();
 
 $functions = [
-    'mod_aiassistant_get_user_credentials' => [
-        'classname'   => 'mod_aiassistant\external\get_user_credentials',
+    'mod_craftpilot_get_user_credentials' => [
+        'classname'   => 'mod_craftpilot\external\get_user_credentials',
         'methodname'  => 'get_user_credentials',
         'description' => 'Get user Fireworks API credentials',
         'type'        => 'read',
         'ajax'        => true,
         'loginrequired' => true,
     ],
-    'mod_aiassistant_manage_conversations' => [
-        'classname'   => 'mod_aiassistant\external\manage_conversations',
+    'mod_craftpilot_manage_conversations' => [
+        'classname'   => 'mod_craftpilot\external\manage_conversations',
         'methodname'  => 'manage_conversations',
         'description' => 'Manage conversations for module instance',
         'type'        => 'write',
         'ajax'        => true,
         'loginrequired' => true,
     ],
-    'mod_aiassistant_manage_messages' => [
-        'classname'   => 'mod_aiassistant\external\manage_messages',
+    'mod_craftpilot_manage_messages' => [
+        'classname'   => 'mod_craftpilot\external\manage_messages',
         'methodname'  => 'manage_messages',
         'description' => 'Manage conversation messages (save, load)',
         'type'        => 'write',
