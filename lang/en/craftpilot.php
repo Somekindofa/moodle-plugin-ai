@@ -15,9 +15,9 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Language strings for the mod_aiassistant plugin.
- *
- * @package   mod_aiassistant
+ * Language strings for the mod_craftpilot plugin.
+
+ * @package   mod_craftpilot
  * @copyright 2025
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -28,8 +28,8 @@ $string['pluginname'] = 'CraftPilot';
 $string['modulename'] = 'CraftPilot';
 $string['modulename_help'] = 'The CraftPilot module allows you to create content pages with an optional AI chat interface powered by Fireworks.ai. Students can ask questions about the course content and receive AI-generated responses with retrieved documents.';
 $string['modulenameplural'] = 'CraftPilots';
-$string['aiassistant:addinstance'] = 'Add a new CraftPilot activity';
-$string['aiassistant:view'] = 'View CraftPilot activity';
+$string['craftpilot:addinstance'] = 'Add a new CraftPilot activity';
+$string['craftpilot:view'] = 'View CraftPilot activity';
 
 // Form strings
 $string['contentheader'] = 'Page Content';

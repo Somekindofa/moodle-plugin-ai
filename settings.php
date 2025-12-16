@@ -15,9 +15,9 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Settings for the mod_aiassistant plugin.
+ * Settings for the mod_craftpilot plugin.
  *
- * @package   mod_aiassistant
+ * @package   mod_craftpilot
  * @copyright 2025
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -25,19 +25,19 @@
 defined('MOODLE_INTERNAL') || die();
 
 if ($hassiteconfig) {
-    $settings = new admin_settingpage('modsettingaiassistant', get_string('pluginname', 'mod_aiassistant'));
+    $settings = new admin_settingpage('modsettingcraftpilot', get_string('pluginname', 'mod_craftpilot'));
     $ADMIN->add('modsettings', $settings);
 
     $settings->add(new admin_setting_heading(
-        'mod_aiassistant/fireworks_heading',
-        get_string('fireworks_heading', 'mod_aiassistant'),
-        get_string('fireworks_heading_desc', 'mod_aiassistant')
+        'mod_craftpilot/fireworks_heading',
+        get_string('fireworks_heading', 'mod_craftpilot'),
+        get_string('fireworks_heading_desc', 'mod_craftpilot')
     ));
 
     $settings->add(new admin_setting_configpasswordunmask(
-        'mod_aiassistant/fireworks_api_key',
-        get_string('fireworks_api_key', 'mod_aiassistant'),
-        get_string('fireworks_api_key_desc', 'mod_aiassistant'),
+        'mod_craftpilot/fireworks_api_key',
+        get_string('fireworks_api_key', 'mod_craftpilot'),
+        get_string('fireworks_api_key_desc', 'mod_craftpilot'),
         ''
     ));
 }

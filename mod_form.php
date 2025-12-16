@@ -15,9 +15,9 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Activity creation/editing form for the mod_aiassistant plugin.
- *
- * @package   mod_aiassistant
+ * Activity creation/editing form for the mod_craftpilot plugin.
+
+ * @package   mod_craftpilot
  * @copyright 2025
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -29,7 +29,7 @@ require_once($CFG->dirroot.'/course/moodleform_mod.php');
 /**
  * Form for creating/editing AI Assistant activity instances.
  */
-class mod_aiassistant_mod_form extends moodleform_mod {
+class mod_craftpilot_mod_form extends moodleform_mod {
 
     /**
      * Define the form elements.
@@ -56,13 +56,13 @@ class mod_aiassistant_mod_form extends moodleform_mod {
         $this->standard_intro_elements();
 
         // Content section.
-        $mform->addElement('header', 'contentsection', get_string('contentheader', 'aiassistant'));
+        $mform->addElement('header', 'contentsection', get_string('contentheader', 'craftpilot'));
 
         // Page content editor (HTML editor).
         $mform->addElement(
             'editor',
             'content',
-            get_string('content', 'aiassistant'),
+            get_string('content', 'craftpilot'),
             ['rows' => 20],
             [
                 'maxfiles' => EDITOR_UNLIMITED_FILES,
@@ -73,20 +73,20 @@ class mod_aiassistant_mod_form extends moodleform_mod {
         );
         $mform->setType('content', PARAM_RAW);
         $mform->addRule('content', get_string('required'), 'required', null, 'client');
-        $mform->addHelpButton('content', 'content', 'aiassistant');
+        $mform->addHelpButton('content', 'content', 'craftpilot');
 
         // AI prompt bar section.
-        $mform->addElement('header', 'promptbarsection', get_string('promptbarsection', 'aiassistant'));
+        $mform->addElement('header', 'promptbarsection', get_string('promptbarsection', 'craftpilot'));
 
         // Enable prompt bar checkbox.
         $mform->addElement(
             'advcheckbox',
             'enable_promptbar',
-            get_string('enablepromptbar', 'aiassistant'),
-            get_string('enablepromptbar_desc', 'aiassistant')
+            get_string('enablepromptbar', 'craftpilot'),
+            get_string('enablepromptbar_desc', 'craftpilot')
         );
         $mform->setDefault('enable_promptbar', 1);
-        $mform->addHelpButton('enable_promptbar', 'enablepromptbar', 'aiassistant');
+        $mform->addHelpButton('enable_promptbar', 'enablepromptbar', 'craftpilot');
 
         // Standard Moodle course module settings.
         $this->standard_coursemodule_elements();
@@ -114,7 +114,7 @@ class mod_aiassistant_mod_form extends moodleform_mod {
             'text' => file_prepare_draft_area(
                 $draftitemid,
                 $this->context->id,
-                'mod_aiassistant',
+                'mod_craftpilot',
                 'content',
                 0,
                 ['subdirs' => true],

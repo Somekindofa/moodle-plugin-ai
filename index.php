@@ -15,9 +15,9 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Activity index for the mod_aiassistant plugin.
- *
- * @package   mod_aiassistant
+ * Activity index for the mod_craftpilot plugin.
+
+ * @package   mod_craftpilot
  * @copyright 2025
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -26,4 +26,4 @@ require_once('../../config.php');
 
 $courseid = required_param('id', PARAM_INT);
 
-core_courseformat\activityoverviewbase::redirect_to_overview_page($courseid, 'aiassistant');
+core_courseformat\activityoverviewbase::redirect_to_overview_page($courseid, 'craftpilot');
