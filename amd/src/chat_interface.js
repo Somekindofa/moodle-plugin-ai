@@ -1,6 +1,6 @@
 ﻿/**
- * AI Assistant Chat Interface - Refactored for mod_craftpilot
- * Streamlined version for per-instance conversations with Fireworks AI
+ * CraftPilot Chat Interface - Complete Redesign
+ * Features: Collapsible bubble, sliding animation, sidebars, conversation management
  */
 
 import * as Ajax from 'core/ajax';
@@ -8,10 +8,15 @@ import * as Ajax from 'core/ajax';
 // Module-level variables
 let cmId, courseId, instanceId;
 let currentConversationId = null;
+let currentConversationTitle = 'Chat';
+let allConversations = [];
 let marked = null;
 
 // DOM elements
-let chatInput, sendButton, messagesContainer, resultsArea, documentsContainer, videoPlayerContainer;
+let chatWrapper, chatToggleButton, chatInterface, messagesArea, chatInput, sendButton;
+let sidebarPanel, sidebarToggle, conversationsList;
+let documentsList, videoPlayerContainer;
+let conversationTitleElement;
 
 /**
  * Main initialization function
@@ -20,51 +25,77 @@ let chatInput, sendButton, messagesContainer, resultsArea, documentsContainer, v
  * @param {number} moduleInstanceId - Activity instance ID
  */
 export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
+    // IMMEDIATE LOGGING - debug if this function is called
+    console.log('🔨 CraftPilot init() function called!');
+    console.log('Parameters:', {moduleCmId, moduleCourseId, moduleInstanceId});
+    
     cmId = moduleCmId;
     courseId = moduleCourseId;
     instanceId = moduleInstanceId;
 
-    console.log('AI Chat: Initializing...', {cmId, courseId, instanceId});
+    console.log('CraftPilot: Initializing...', {cmId, courseId, instanceId});
 
     const initializeChat = () => {
-        // Load marked.js for markdown rendering
+        console.log('🔨 initializeChat() starting...');
         if (typeof window.marked === 'undefined') {
             const script = document.createElement('script');
             script.src = 'https://cdn.jsdelivr.net/npm/marked/marked.min.js';
             script.onload = () => {
                 marked = window.marked;
-                console.log('Marked.js loaded');
+                console.log('CraftPilot: Marked.js loaded');
             };
             document.head.appendChild(script);
         } else {
             marked = window.marked;
         }
 
-        // Get DOM elements (IDs follow view.php markup)
+        // Get all required DOM elements
+        console.log('🔨 Getting DOM elements...');
+        chatWrapper = document.getElementById("ai-chat-wrapper");
+        chatToggleButton = document.getElementById("ai-chat-toggle");
+        chatInterface = document.getElementById("ai-chat-interface");
+        messagesArea = document.getElementById("messages-area");
         chatInput = document.getElementById("user-input");
         sendButton = document.getElementById("send-btn");
-        messagesContainer = document.getElementById("messages-area");
-        resultsArea = document.getElementById("documents-sidepanel");
-        documentsContainer = document.getElementById("documents-list");
+        conversationTitleElement = document.getElementById("current-conversation-title");
+        sidebarPanel = document.getElementById("ai-sidebar-panel");
+        sidebarToggle = document.getElementById("ai-sidebar-toggle");
+        
+        console.log('🔨 Element status:', {
+            chatWrapper: !!chatWrapper,
+            chatToggleButton: !!chatToggleButton,
+            chatInterface: !!chatInterface,
+            messagesArea: !!messagesArea,
+            chatInput: !!chatInput,
+            sendButton: !!sendButton,
+            sidebarPanel: !!sidebarPanel,
+            sidebarToggle: !!sidebarToggle
+        });
+        
+        conversationsList = document.getElementById("conversations-list");
+        documentsList = document.getElementById("documents-list");
         videoPlayerContainer = document.getElementById("video-player-container");
 
-        // Validate required elements; if any are missing, log once and exit gracefully
+        // Validate required elements
         const missingElements = [];
+        if (!chatWrapper) missingElements.push('ai-chat-wrapper');
+        if (!chatToggleButton) missingElements.push('ai-chat-toggle');
+        if (!chatInterface) missingElements.push('ai-chat-interface');
+        if (!messagesArea) missingElements.push('messages-area');
         if (!chatInput) missingElements.push('user-input');
         if (!sendButton) missingElements.push('send-btn');
-        if (!messagesContainer) missingElements.push('messages-area');
+        if (!sidebarToggle) missingElements.push('ai-sidebar-toggle');
 
         if (missingElements.length > 0) {
-            console.warn('AI Chat: Skipping init, missing elements:', missingElements.join(', '));
+            console.warn('CraftPilot: Skipping init, missing elements:', missingElements.join(', '));
             return;
         }
 
-        console.log('AI Chat: Elements found, setting up...');
-
-        // Initialize conversation for this instance
-        initializeConversation();
+        console.log('CraftPilot: Elements found, setting up...');
 
         // Setup event listeners
+        chatToggleButton.addEventListener("click", toggleChatInterface);
+        if (sidebarToggle) sidebarToggle.addEventListener("click", toggleSidebarPanel);
         sendButton.addEventListener("click", sendMessage);
         
         chatInput.addEventListener("keypress", (e) => {
@@ -75,6 +106,9 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
         });
 
         chatInput.addEventListener('input', autoResizeTextarea);
+
+        // Initialize conversation for this instance
+        initializeConversation();
     };
 
     /**
@@ -92,9 +126,14 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
             .then((response) => {
                 const conversations = response.conversations || response.data || [];
                 if (response.success && conversations.length > 0) {
+                    allConversations = conversations;
                     // Load existing conversation
-                    currentConversationId = conversations[0].conversation_id || conversations[0].id;
-                    console.log('AI Chat: Found existing conversation', currentConversationId);
+                    const firstConv = conversations[0];
+                    currentConversationId = firstConv.conversation_id || firstConv.id;
+                    currentConversationTitle = firstConv.title || 'Chat';
+                    console.log('CraftPilot: Found existing conversation', currentConversationId);
+                    updateConversationHeader();
+                    populateConversationsList(conversations, currentConversationId);
                     loadMessagesFromDatabase(currentConversationId);
                 } else {
                     // Create new conversation
@@ -103,10 +142,173 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
                 }
             })
             .catch((error) => {
-                console.error('AI Chat: Failed to initialize conversation', error);
-                if (messagesContainer) {
-                    messagesContainer.innerHTML = '<div class="ai-message"><strong>AI Assistant:</strong> <em>Failed to initialize chat. Please refresh the page.</em></div>';
+                console.error('CraftPilot: Failed to initialize conversation', error);
+                if (messagesArea) {
+                    messagesArea.innerHTML = '<div class="ai-message assistant-message"><em>Failed to initialize chat. Please refresh the page.</em></div>';
                 }
+            });
+    };
+
+    /**
+     * Toggle chat interface (slide up/down from bottom)
+     */
+    const toggleChatInterface = () => {
+        const isExpanded = chatInterface.classList.contains('expanded');
+        if (isExpanded) {
+            chatInterface.classList.remove('expanded');
+            sidebarPanel.classList.remove('expanded');
+            if (chatWrapper) chatWrapper.classList.remove('expanded');
+            if (sidebarToggle) sidebarToggle.classList.remove('expanded');
+            if (sidebarToggle) sidebarToggle.querySelector('.ai-sidebar-toggle-arrow').textContent = '◀';
+        } else {
+            chatInterface.classList.add('expanded');
+            if (chatWrapper) chatWrapper.classList.add('expanded');
+            chatInput.focus();
+        }
+    };
+
+    /**
+     * Toggle sidebar panel via handle
+     */
+    const toggleSidebarPanel = () => {
+        // Ensure chat is open when toggling sidebar
+        if (!chatInterface.classList.contains('expanded')) {
+            toggleChatInterface();
+        }
+        const isExpanded = sidebarPanel.classList.contains('expanded');
+        if (isExpanded) {
+            sidebarPanel.classList.remove('expanded');
+            if (sidebarToggle) sidebarToggle.classList.remove('expanded');
+            if (sidebarToggle) sidebarToggle.querySelector('.ai-sidebar-toggle-arrow').textContent = '◀';
+        } else {
+            sidebarPanel.classList.add('expanded');
+            if (sidebarToggle) sidebarToggle.classList.add('expanded');
+            if (sidebarToggle) sidebarToggle.querySelector('.ai-sidebar-toggle-arrow').textContent = '▶';
+        }
+    };
+
+    /**
+     * Update conversation header title
+     */
+    const updateConversationHeader = () => {
+        if (conversationTitleElement) {
+            conversationTitleElement.textContent = currentConversationTitle || 'Chat';
+        }
+    };
+
+    /**
+     * Populate conversations list in left sidebar
+     */
+    const populateConversationsList = (conversations, activeId) => {
+        conversationsList.innerHTML = '';
+        
+        conversations.forEach((conv) => {
+            const convId = String(conv.conversation_id || conv.id);
+            const item = document.createElement('div');
+            item.className = 'conversation-item';
+            item.dataset.conversationId = convId;
+            if (convId === String(activeId)) {
+                item.classList.add('active');
+            }
+            
+            const meta = document.createElement('div');
+            meta.className = 'conversation-meta';
+
+            const title = document.createElement('strong');
+            title.textContent = conv.title || 'Chat';
+            meta.appendChild(title);
+            
+            const timestamp = document.createElement('div');
+            timestamp.style.fontSize = '11px';
+            timestamp.style.color = '#999';
+            timestamp.textContent = new Date(conv.created_time || conv.created).toLocaleDateString();
+            meta.appendChild(timestamp);
+            
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'conversation-delete';
+            deleteBtn.title = 'Delete conversation';
+            deleteBtn.setAttribute('aria-label', 'Delete conversation');
+            deleteBtn.textContent = '🗑';
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                deleteConversation(convId);
+            });
+
+            item.appendChild(meta);
+            item.appendChild(deleteBtn);
+            item.addEventListener('click', () => selectConversation(convId, conv.title || 'Chat'));
+            conversationsList.appendChild(item);
+        });
+    };
+
+    /**
+     * Select a conversation and load its messages
+     */
+    const selectConversation = (conversationId, title) => {
+        const targetId = String(conversationId);
+        currentConversationId = targetId;
+        currentConversationTitle = title;
+        updateConversationHeader();
+        
+        if (conversationsList) {
+            conversationsList.querySelectorAll('.conversation-item').forEach(item => {
+                if (item.dataset.conversationId === targetId) {
+                    item.classList.add('active');
+                } else {
+                    item.classList.remove('active');
+                }
+            });
+        }
+        
+        messagesArea.innerHTML = '';
+        loadMessagesFromDatabase(targetId);
+    };
+
+    /**
+     * Delete a conversation and its messages
+     */
+    const deleteConversation = (conversationId) => {
+        if (!conversationId) return;
+        const confirmed = window.confirm('Delete this conversation and all its messages?');
+        if (!confirmed) return;
+
+        Ajax.call([{
+            methodname: 'mod_craftpilot_manage_conversations',
+            args: {
+                action: 'delete',
+                conversation_id: conversationId
+            }
+        }])[0]
+            .then((response) => {
+                if (!response.success) {
+                    console.error('CraftPilot: Failed to delete conversation', response.message);
+                    return;
+                }
+
+                allConversations = allConversations.filter((conv) => String(conv.conversation_id || conv.id) !== String(conversationId));
+
+                if (String(currentConversationId) === String(conversationId)) {
+                    if (allConversations.length > 0) {
+                        const next = allConversations[0];
+                        selectConversation(next.conversation_id || next.id, next.title || 'Chat');
+                    } else {
+                        const newId = generateUUID();
+                        const now = Date.now();
+                        allConversations = [{
+                            conversation_id: newId,
+                            title: 'Chat Session',
+                            created_time: now
+                        }];
+                        populateConversationsList(allConversations, newId);
+                        createConversationInMoodle(newId);
+                        return;
+                    }
+                }
+
+                populateConversationsList(allConversations, currentConversationId);
+            })
+            .catch((error) => {
+                console.error('CraftPilot: Error deleting conversation', error);
             });
     };
 
@@ -130,16 +332,18 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
             .then((response) => {
                 if (response.success) {
                     currentConversationId = conversationId;
-                    console.log('AI Chat: Created new conversation', conversationId);
-                    if (messagesContainer) {
-                        messagesContainer.innerHTML = '<div class="ai-message"><strong>AI Assistant:</strong> <em>Ready to assist you!</em></div>';
+                    currentConversationTitle = 'Chat Session';
+                    updateConversationHeader();
+                    console.log('CraftPilot: Created new conversation', conversationId);
+                    if (messagesArea) {
+                        messagesArea.innerHTML = '<div class="ai-message assistant-message"><em>Ready to assist you!</em></div>';
                     }
                 } else {
-                    console.error('AI Chat: Failed to create conversation', response.message);
+                    console.error('CraftPilot: Failed to create conversation', response.message);
                 }
             })
             .catch((error) => {
-                console.error('AI Chat: Error creating conversation', error);
+                console.error('CraftPilot: Error creating conversation', error);
             });
     };
 
@@ -159,13 +363,13 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
                 if (response.success) {
                     if (messages.length > 0) {
                         displayMessages(messages);
-                    } else if (messagesContainer) {
-                        messagesContainer.innerHTML = '<div class="ai-message"><strong>AI Assistant:</strong> <em>Ready to assist you!</em></div>';
+                    } else if (messagesArea) {
+                        messagesArea.innerHTML = '<div class="ai-message assistant-message"><em>Ready to assist you!</em></div>';
                     }
                 }
             })
             .catch((error) => {
-                console.error('AI Chat: Failed to load messages', error);
+                console.error('CraftPilot: Failed to load messages', error);
             });
     };
 
@@ -173,23 +377,24 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
      * Display messages in chat container
      */
     const displayMessages = (messages) => {
-        messagesContainer.innerHTML = '';
+        messagesArea.innerHTML = '';
         
         messages.forEach((message) => {
             const messageDiv = document.createElement('div');
-            messageDiv.className = 'ai-message';
             
             if (message.role === 'user') {
-                messageDiv.innerHTML = '<strong>You:</strong> ' + escapeHtml(message.content);
+                messageDiv.className = 'ai-message user-message';
+                messageDiv.textContent = message.content;
             } else {
+                messageDiv.className = 'ai-message assistant-message';
                 const content = marked ? marked.parse(message.content) : escapeHtml(message.content);
-                messageDiv.innerHTML = '<strong>AI Assistant:</strong> ' + content;
+                messageDiv.innerHTML = content;
             }
             
-            messagesContainer.appendChild(messageDiv);
+            messagesArea.appendChild(messageDiv);
         });
 
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        messagesArea.parentElement.scrollTop = messagesArea.parentElement.scrollHeight;
     };
 
     /**
@@ -203,7 +408,7 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
         }
 
         if (!currentConversationId) {
-            messagesContainer.innerHTML = '<div class="ai-message"><strong>AI Assistant:</strong> <em>Initializing conversation...</em></div>';
+            messagesArea.innerHTML = '<div class="ai-message assistant-message"><em>Initializing conversation...</em></div>';
             setTimeout(sendMessage, 1000); // Retry after conversation is created
             return;
         }
@@ -214,13 +419,16 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
         
         // Display user message
         const userDiv = document.createElement('div');
-        userDiv.className = 'ai-message';
-        userDiv.innerHTML = '<strong>You:</strong> ' + escapeHtml(userMessage);
-        messagesContainer.appendChild(userDiv);
+        userDiv.className = 'ai-message user-message';
+        userDiv.textContent = userMessage;
+        messagesArea.appendChild(userDiv);
         
         // Clear input
         chatInput.value = '';
         autoResizeTextarea();
+        
+        // Scroll to bottom
+        messagesArea.parentElement.scrollTop = messagesArea.parentElement.scrollHeight;
         
         // Save user message
         saveMessageToDatabase(currentConversationId, 'user', userMessage);
@@ -235,10 +443,10 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
     const sendFireworksChatMessage = (userMessage) => {
         // Display loading state
         const loadingDiv = document.createElement('div');
-        loadingDiv.className = 'ai-message';
-        loadingDiv.innerHTML = '<strong>AI Assistant:</strong> <em>Thinking...</em>';
-        messagesContainer.appendChild(loadingDiv);
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        loadingDiv.className = 'ai-message assistant-message';
+        loadingDiv.innerHTML = '<em>Thinking...</em>';
+        messagesArea.appendChild(loadingDiv);
+        messagesArea.parentElement.scrollTop = messagesArea.parentElement.scrollHeight;
 
         // Get Fireworks API key
         Ajax.call([{
@@ -247,7 +455,7 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
         }])[0]
             .then((response) => {
                 if (!response.success || !response.api_key) {
-                    loadingDiv.innerHTML = '<strong>AI Assistant:</strong> <em style="color: red;">Error: Fireworks API key not configured</em>';
+                    loadingDiv.innerHTML = '<em style="color: red;">Error: Fireworks API key not configured</em>';
                     chatInput.disabled = false;
                     sendButton.disabled = false;
                     return;
@@ -270,86 +478,92 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
                     body: JSON.stringify(requestBody)
                 })
                 .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
 
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-                let buffer = '';
-                let assistantResponse = '';
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+                    let assistantResponse = '';
 
-                // Replace loading message with empty assistant message
-                loadingDiv.innerHTML = '<strong>AI Assistant:</strong> <span class="ai-response-content"></span>';
-                const contentSpan = loadingDiv.querySelector('.ai-response-content');
+                    // Replace loading message with empty assistant message
+                    loadingDiv.innerHTML = '<span class="ai-response-content"></span>';
+                    const contentSpan = loadingDiv.querySelector('.ai-response-content');
 
-                const readStream = () => {
-                    return reader.read().then(({done, value}) => {
-                        if (done) {
-                            // Save complete response
-                            saveMessageToDatabase(currentConversationId, 'assistant', assistantResponse);
-                            
-                            // Re-enable input
-                            chatInput.disabled = false;
-                            sendButton.disabled = false;
-                            chatInput.focus();
-                            return;
-                        }
-
-                        buffer += decoder.decode(value, {stream: true});
-                        const lines = buffer.split('\n\n');
-                        buffer = lines.pop(); // Keep incomplete line
-
-                        lines.forEach(line => {
-                            if (line.startsWith('data: ')) {
-                                const data = line.substring(6);
+                    const readStream = () => {
+                        return reader.read().then(({done, value}) => {
+                            if (done) {
+                                // Save complete response
+                                saveMessageToDatabase(currentConversationId, 'assistant', assistantResponse);
                                 
-                                if (data === '[DONE]') {
-                                    return;
-                                }
+                                // Re-enable input
+                                chatInput.disabled = false;
+                                sendButton.disabled = false;
+                                chatInput.focus();
+                                return;
+                            }
+
+                            buffer += decoder.decode(value, {stream: true});
+                            const lines = buffer.split('\n');
+                            buffer = lines.pop(); // Keep incomplete line
+
+                            lines.forEach(line => {
+                                if (!line.trim()) return;
 
                                 try {
-                                    const parsed = JSON.parse(data);
+                                    const parsed = JSON.parse(line);
 
-                                    if (parsed.type === 'text') {
-                                        assistantResponse += parsed.content;
+                                    // Handle Python backend format: {event: 'message', content: [...], documents: [...]}
+                                    if (parsed.event === 'message' && parsed.content) {
+                                        // Extract text from content array
+                                        parsed.content.forEach(msg => {
+                                            if (msg.content) {
+                                                assistantResponse += msg.content;
+                                            }
+                                        });
                                         contentSpan.innerHTML = marked ? marked.parse(assistantResponse) : escapeHtml(assistantResponse);
-                                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                                    } else if (parsed.type === 'documents' && parsed.documents) {
-                                        showDocuments(parsed.documents);
+                                        messagesArea.parentElement.scrollTop = messagesArea.parentElement.scrollHeight;
+                                        
+                                        // Show documents if present
+                                        if (parsed.documents && parsed.documents.length > 0) {
+                                            showDocuments(parsed.documents);
+                                        }
+                                    } else if (parsed.content === '[DONE]') {
+                                        return;
                                     } else if (parsed.type === 'video_segment') {
                                         displayVideoSegment(parsed.video_id, parsed.start_time, parsed.end_time);
-                                    } else if (parsed.type === 'error') {
-                                        contentSpan.innerHTML = '<em style="color: red;">Error: ' + escapeHtml(parsed.message) + '</em>';
+                                    } else if (parsed.type === 'error' || parsed.event === 'error') {
+                                        const errorMsg = parsed.message || parsed.content;
+                                        contentSpan.innerHTML = '<em style="color: red;">Error: ' + escapeHtml(errorMsg) + '</em>';
                                         chatInput.disabled = false;
                                         sendButton.disabled = false;
                                         return;
                                     }
                                 } catch (e) {
-                                    console.error('Failed to parse SSE data:', e);
+                                    console.error('CraftPilot: Failed to parse streaming data:', e, 'Line:', line);
                                 }
-                            }
+                            });
+
+                            return readStream();
                         });
+                    };
 
-                        return readStream();
-                    });
-                };
-
-                return readStream();
+                    return readStream();
+                })
+                .catch(error => {
+                    console.error('CraftPilot: Error streaming response:', error);
+                    loadingDiv.innerHTML = '<em style="color: red;">Failed to get response. Please check if the RAG backend is running.</em>';
+                    chatInput.disabled = false;
+                    sendButton.disabled = false;
+                });
             })
-            .catch(error => {
-                console.error('Error streaming response:', error);
-                loadingDiv.innerHTML = '<strong>AI Assistant:</strong> <em style="color: red;">Failed to get response. Please check if the RAG backend is running.</em>';
+            .catch((error) => {
+                console.error('CraftPilot: Failed to get credentials:', error);
+                loadingDiv.innerHTML = '<em style="color: red;">Failed to retrieve API credentials</em>';
                 chatInput.disabled = false;
                 sendButton.disabled = false;
             });
-        })
-        .catch((error) => {
-            console.error('Failed to get credentials:', error);
-            loadingDiv.innerHTML = '<strong>AI Assistant:</strong> <em style="color: red;">Failed to retrieve API credentials</em>';
-            chatInput.disabled = false;
-            sendButton.disabled = false;
-        });
     };
 
     /**
@@ -369,50 +583,45 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
         }])[0]
             .then((response) => {
                 if (response.success) {
-                    console.log('Message saved:', messageRole);
+                    console.log('CraftPilot: Message saved:', messageRole);
                 } else {
-                    console.error('Failed to save message:', response.message);
+                    console.error('CraftPilot: Failed to save message:', response.message);
                 }
             })
             .catch((error) => {
-                console.error('Error saving message:', error);
+                console.error('CraftPilot: Error saving message:', error);
             });
     };
 
     /**
-     * Display retrieved documents in sidepanel
+     * Display retrieved documents in sidebar
      */
     const showDocuments = (documents) => {
-        if (!documentsContainer) return;
+        if (!documentsList) return;
 
-        documentsContainer.innerHTML = '';
+        documentsList.innerHTML = '';
         
         if (documents.length === 0) {
-            hideResultsArea();
             return;
         }
 
-        showResultsArea();
-
-        const listElement = document.createElement('ul');
-        listElement.className = 'ai-documents-list';
-
         documents.forEach((doc) => {
-            const item = document.createElement('li');
-            item.className = 'ai-document-item';
+            const item = document.createElement('div');
+            item.className = 'document-item';
             
             const title = document.createElement('strong');
             title.textContent = doc.title || 'Document';
             item.appendChild(title);
             
             const content = document.createElement('p');
-            content.textContent = doc.content.substring(0, 200) + (doc.content.length > 200 ? '...' : '');
+            content.style.fontSize = '12px';
+            content.style.marginTop = '4px';
+            content.style.color = '#666';
+            content.textContent = doc.content.substring(0, 150) + (doc.content.length > 150 ? '...' : '');
             item.appendChild(content);
             
-            listElement.appendChild(item);
+            documentsList.appendChild(item);
         });
-
-        documentsContainer.appendChild(listElement);
     };
 
     /**
@@ -421,36 +630,27 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
     const displayVideoSegment = (videoId, startTime, endTime) => {
         if (!videoPlayerContainer) return;
 
-        showResultsArea();
-        if (videoPlayerContainer.style.display === 'none') {
-            videoPlayerContainer.style.display = 'block';
-        }
+        // Show documents sidebar
+        documentsSidebar.style.display = 'flex';
 
         const iframe = document.createElement('iframe');
         iframe.width = '100%';
-        iframe.height = '315';
+        iframe.height = '200';
         iframe.src = 'https://www.youtube.com/embed/' + videoId + '?start=' + Math.floor(startTime) + '&end=' + Math.floor(endTime);
         iframe.frameBorder = '0';
         iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
         iframe.allowFullscreen = true;
+        iframe.style.borderRadius = '4px';
 
         const info = document.createElement('div');
-        info.className = 'ai-video-info';
-        info.innerHTML = '<strong>Video Segment:</strong> ' + formatTime(startTime) + ' - ' + formatTime(endTime);
+        info.style.fontSize = '12px';
+        info.style.marginTop = '8px';
+        info.style.color = '#666';
+        info.innerHTML = '<strong>Video:</strong> ' + formatTime(startTime) + ' - ' + formatTime(endTime);
 
         videoPlayerContainer.innerHTML = '';
         videoPlayerContainer.appendChild(iframe);
         videoPlayerContainer.appendChild(info);
-    };
-
-    /**
-     * Clear video player
-     */
-    const clearVideoPlayer = () => {
-        if (videoPlayerContainer) {
-            videoPlayerContainer.style.display = 'none';
-            videoPlayerContainer.innerHTML = '';
-        }
     };
 
     /**
@@ -466,24 +666,6 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
             minutes.toString().padStart(2, '0'),
             secs.toString().padStart(2, '0')
         ].join(':');
-    };
-
-    /**
-     * Show results sidepanel
-     */
-    const showResultsArea = () => {
-        if (resultsArea) {
-            resultsArea.style.display = 'block';
-        }
-    };
-
-    /**
-     * Hide results sidepanel
-     */
-    const hideResultsArea = () => {
-        if (resultsArea) {
-            resultsArea.style.display = 'none';
-        }
     };
 
     /**
