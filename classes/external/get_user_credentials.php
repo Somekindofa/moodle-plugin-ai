@@ -1,7 +1,7 @@
 <?php
 // This file is part of Moodle - http://moodle.org/
 
-namespace mod_aiassistant\external;
+namespace mod_craftpilot\external;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -12,12 +12,12 @@ use external_function_parameters;
 use external_value;
 use external_single_structure;
 use context_system;
-use mod_aiassistant\credential_service;
+use mod_craftpilot\credential_service;
 
 /**
  * External API for getting user credentials
  * 
- * @package    mod_aiassistant
+ * @package    mod_craftpilot
  * @copyright  2025
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */

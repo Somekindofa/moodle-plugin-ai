@@ -1,7 +1,7 @@
 <?php
 // This file is part of Moodle - http://moodle.org/
 
-namespace mod_aiassistant\external;
+namespace mod_craftpilot\external;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -17,7 +17,7 @@ use context_system;
 /**
  * External API for managing conversations
  * 
- * @package    mod_aiassistant
+ * @package    mod_craftpilot
  * @copyright  2025
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -60,8 +60,8 @@ class manage_conversations extends external_api {
 
         try {
             // Check if database table exists
-            if (!$DB->get_manager()->table_exists('aiassistant_conv')) {
-                return self::error_response('Database table aiassistant_conv does not exist');
+            if (!$DB->get_manager()->table_exists('craftpilot_conv')) {
+                return self::error_response('Database table craftpilot_conv does not exist');
             }
 
             switch ($params['action']) {
@@ -113,7 +113,7 @@ class manage_conversations extends external_api {
         }
 
         // Check if conversation already exists
-        $existing = $DB->get_record('aiassistant_conv', [
+        $existing = $DB->get_record('craftpilot_conv', [
             'conversation_id' => $conversation_id,
             'is_active' => 1
         ]);
@@ -133,7 +133,7 @@ class manage_conversations extends external_api {
             $record->is_active = 1;
             $record->metadata = $metadata;
 
-            $id = $DB->insert_record('aiassistant_conv', $record);
+            $id = $DB->insert_record('craftpilot_conv', $record);
 
             self::log_debug("Created conversation with database ID {$id} for user {$user_id}");
 
@@ -172,7 +172,7 @@ class manage_conversations extends external_api {
                 $conditions['instanceid'] = $instance_id;
             }
             
-            $conversations = $DB->get_records('aiassistant_conv', $conditions, 'last_updated DESC');
+            $conversations = $DB->get_records('craftpilot_conv', $conditions, 'last_updated DESC');
 
             $conversation_list = [];
             foreach ($conversations as $conversation) {
@@ -213,7 +213,7 @@ class manage_conversations extends external_api {
         }
 
         try {
-            $conversation = $DB->get_record('aiassistant_conv', [
+            $conversation = $DB->get_record('craftpilot_conv', [
                 'conversation_id' => $conversation_id,
                 'userid' => $user_id,
                 'is_active' => 1
@@ -232,7 +232,7 @@ class manage_conversations extends external_api {
             }
             $conversation->last_updated = time();
 
-            $DB->update_record('aiassistant_conv', $conversation);
+            $DB->update_record('craftpilot_conv', $conversation);
 
             self::log_debug("Updated conversation {$conversation_id} for user {$user_id}");
 
@@ -264,7 +264,7 @@ class manage_conversations extends external_api {
         }
 
         try {
-            $conversation = $DB->get_record('aiassistant_conv', [
+            $conversation = $DB->get_record('craftpilot_conv', [
                 'conversation_id' => $conversation_id,
                 'userid' => $user_id,
                 'is_active' => 1
@@ -275,14 +275,14 @@ class manage_conversations extends external_api {
             }
 
             // Delete all messages associated with this conversation
-            $DB->delete_records('aiassistant_msg', [
+            $DB->delete_records('craftpilot_msg', [
                 'conversation_id' => $conversation_id
             ]);
 
             // Soft delete the conversation by setting is_active to 0
             $conversation->is_active = 0;
             $conversation->last_updated = time();
-            $DB->update_record('aiassistant_conv', $conversation);
+            $DB->update_record('craftpilot_conv', $conversation);
 
             self::log_debug("Deleted conversation {$conversation_id} and all its messages for user {$user_id}");
 
