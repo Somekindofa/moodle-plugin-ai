@@ -1,5 +1,5 @@
 ﻿/**
- * AI Assistant Chat Interface - Refactored for mod_aiassistant
+ * AI Assistant Chat Interface - Refactored for mod_craftpilot
  * Streamlined version for per-instance conversations with Fireworks AI
  */
 
@@ -83,7 +83,7 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
     const initializeConversation = () => {
         // Check if conversation exists for this user + instance
         Ajax.call([{
-            methodname: 'mod_aiassistant_manage_conversations',
+            methodname: 'mod_craftpilot_manage_conversations',
             args: {
                 action: 'list',
                 instance_id: instanceId
@@ -115,7 +115,7 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
      */
     const createConversationInMoodle = (conversationId) => {
         Ajax.call([{
-            methodname: 'mod_aiassistant_manage_conversations',
+            methodname: 'mod_craftpilot_manage_conversations',
             args: {
                 action: 'create',
                 conversation_id: conversationId,
@@ -148,7 +148,7 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
      */
     const loadMessagesFromDatabase = (conversationId) => {
         Ajax.call([{
-            methodname: 'mod_aiassistant_manage_messages',
+            methodname: 'mod_craftpilot_manage_messages',
             args: {
                 action: 'load',
                 conversation_id: conversationId
@@ -242,7 +242,7 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
 
         // Get Fireworks API key
         Ajax.call([{
-            methodname: 'mod_aiassistant_get_user_credentials',
+            methodname: 'mod_craftpilot_get_user_credentials',
             args: {}
         }])[0]
             .then((response) => {
@@ -359,7 +359,7 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
         const messageType = messageRole === 'assistant' ? 'ai' : 'user';
 
         Ajax.call([{
-            methodname: 'mod_aiassistant_manage_messages',
+            methodname: 'mod_craftpilot_manage_messages',
             args: {
                 action: 'save',
                 conversation_id: conversationId,
