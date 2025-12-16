@@ -101,112 +101,445 @@ if ($instance->enable_promptbar) {
     ]);
     
     // Output chat interface HTML.
-    echo '<div class="aiassistant-chat-wrapper">';
-    echo '<div class="aiassistant-chat-container">';
+    echo '<div class="ai-chat-wrapper" id="ai-chat-wrapper">';
     
-    // Chat input area (fixed at bottom).
+    // Left unified sidebar panel (Conversations + Documents)
+    echo '<div class="ai-sidebar-panel" id="ai-sidebar-panel">';
+    echo '<div class="ai-sidebar-section conversations-section">';
+    echo '<div class="sidebar-header">Conversations</div>';
+    echo '<div id="conversations-list" class="conversations-list"></div>';
+    echo '</div>';
+    echo '<div class="ai-sidebar-divider"></div>';
+    echo '<div class="ai-sidebar-section documents-section">';
+    echo '<div class="sidebar-header">Retrieved Documents</div>';
+    echo '<div id="documents-list" class="documents-list"></div>';
+    echo '<div id="video-player-container" class="video-player-container"></div>';
+    echo '</div>';
+    echo '</div>';
+
+    // Sidebar toggle handle
+    echo '<button id="ai-sidebar-toggle" class="ai-sidebar-toggle" title="Toggle sidebar" aria-label="Toggle sidebar">';
+    echo '<span class="ai-sidebar-toggle-arrow">◀</span>';
+    echo '</button>';
+    
+    // Chat interface container (hidden by default, slides up from bottom)
+    echo '<div id="ai-chat-interface" class="ai-chat-interface">';
+    
+    // Conversation header with name
+    echo '<div class="ai-chat-header">';
+    echo '<span id="current-conversation-title" class="conversation-title">Chat</span>';
+    echo '</div>';
+    
+    // Messages container (scrollable)
+    echo '<div class="ai-messages-wrapper">';
+    echo '<div class="ai-messages-area" id="messages-area"></div>';
+    echo '</div>';
+    
+    // Chat input area
+    echo '<div class="ai-input-container">';
     echo '<div class="ai-input-area">';
     echo '<textarea id="user-input" placeholder="'.get_string('promptplaceholder', 'craftpilot').'" rows="2"></textarea>';
-    echo '<button id="send-btn"><i class="fa fa-paper-plane"></i> '.get_string('send', 'craftpilot').'</button>';
+    echo '<button id="send-btn" class="send-button"><i class="fa fa-paper-plane"></i></button>';
+    echo '</div>';
     echo '</div>';
     
-    // Message display area.
-    echo '<div class="ai-messages-area" id="messages-area"></div>';
+    echo '</div>'; // .ai-chat-interface
     
-    // Documents sidepanel (hidden by default).
-    echo '<div class="ai-sidepanel" id="documents-sidepanel" style="display: none;">';
-    echo '<div class="sidepanel-header">'.get_string('retrieveddocs', 'craftpilot').'</div>';
-    echo '<div id="documents-list"></div>';
-    echo '<div id="video-player-container"></div>';
-    echo '</div>';
+    // Hammer bubble button (appears in footer)
+    echo '<button id="ai-chat-toggle" class="ai-chat-bubble" title="Open CraftPilot Chat">';
+    echo '</button>';
     
-    echo '</div>'; // .aiassistant-chat-container
-    echo '</div>'; // .aiassistant-chat-wrapper
+    echo '</div>'; // .ai-chat-wrapper
     
-    // Add CSS for chat interface.
+    // Add comprehensive CSS for chat interface.
     echo '<style>
-    .aiassistant-chat-wrapper {
-        margin-top: 2rem;
-        position: relative;
-    }
-    .aiassistant-chat-container {
+    /* Chat Wrapper - Main Container */
+    .ai-chat-wrapper {
+        position: fixed;
+        bottom: 0;
+        left: 285px;
+        right: 80px;
+        height: 100vh;
         display: flex;
-        flex-direction: column;
-        max-width: 100%;
-        margin: 0 auto;
+        gap: 5px;
+        padding: 10px;
+        background: transparent;
+        z-index: 1050;
+        pointer-events: none;
     }
-    .ai-input-area {
-        display: flex;
-        gap: 10px;
-        padding: 15px;
-        background: #f9f9f9;
+
+    .ai-chat-wrapper:not(.expanded) {
+        gap: 0;
+    }
+    
+    /* Sidebar Panel (Left) */
+    .ai-sidebar-panel {
+        flex: 0 0 0;
+        width: 0;
+        min-width: 0;
+        height: 100%;
+        background: white;
         border: 1px solid #ddd;
         border-radius: 8px;
-        position: fixed;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 90%;
-        max-width: 800px;
-        z-index: 1000;
-        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        pointer-events: none;
+        opacity: 0;
+        transform: translateX(-12px);
+        transition: all 0.25s ease-out;
     }
+    
+    .ai-sidebar-panel.expanded {
+        flex: 0 0 280px;
+        width: 280px;
+        min-width: 280px;
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateX(0);
+    }
+
+    .ai-sidebar-toggle {
+        position: relative;
+        align-self: center;
+        width: 24px;
+        height: 56px;
+        margin-left: -4px;
+        margin-right: -4px;
+        border: none;
+        background: #0066cc;
+        color: white;
+        cursor: pointer;
+        border-radius: 0 28px 28px 0;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        pointer-events: auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.2s ease, transform 0.2s ease;
+    }
+
+    .ai-sidebar-toggle:hover {
+        background: #0052a3;
+        transform: translateX(2px);
+    }
+
+    .ai-sidebar-toggle-arrow {
+        font-size: 14px;
+        line-height: 1;
+    }
+    
+    /* Sidebar Sections */
+    .ai-sidebar-section {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        overflow: hidden;
+    }
+    
+    .ai-sidebar-divider {
+        height: 1px;
+        background: #e0e0e0;
+        flex-shrink: 0;
+    }
+    
+    .sidebar-header {
+        padding: 12px 15px;
+        font-weight: 600;
+        font-size: 13px;
+        background: #f5f5f5;
+        border-bottom: 1px solid #ddd;
+        color: #666;
+        flex-shrink: 0;
+    }
+    
+    .conversations-list,
+    .documents-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 8px;
+    }
+
+    .conversation-item,
+    .document-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        margin-bottom: 6px;
+        background: #fafafa;
+        border: 1px solid #e0e0e0;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 13px;
+        color: #333;
+        transition: all 0.2s ease;
+        pointer-events: auto;
+    }
+
+    .conversation-item:hover,
+    .document-item:hover {
+        background: #e8f4ff;
+        border-color: #0066cc;
+        color: #0066cc;
+    }
+
+    .conversation-item.active {
+        background: #0066cc;
+        border-color: #0066cc;
+        color: white;
+    }
+
+    .conversation-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .conversation-delete {
+        border: none;
+        background: transparent;
+        color: #999;
+        cursor: pointer;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        flex-shrink: 0;
+    }
+
+    .conversation-delete:hover {
+        background: rgba(0,0,0,0.05);
+        color: #c0392b;
+    }
+    
+    /* Chat Interface Container */
+    .ai-chat-interface {
+        flex: 1;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        z-index: 1050;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        pointer-events: auto;
+        transform: translateY(100%);
+        transition: transform 0.4s ease-out;
+    }
+    
+    .ai-chat-interface.expanded {
+        transform: translateY(0);
+    }
+    
+    /* Chat Header */
+    .ai-chat-header {
+        padding: 15px 20px;
+        background: #f5f5f5;
+        border-bottom: 1px solid #ddd;
+        font-weight: 600;
+        font-size: 16px;
+        color: #333;
+        flex-shrink: 0;
+        border-radius: 8px 8px 0 0;
+    }
+    
+    .conversation-title {
+        display: inline-block;
+    }
+    
+    /* Messages Wrapper and Area */
+    .ai-messages-wrapper {
+        flex: 1;
+        overflow-y: auto;
+        padding: 15px 20px;
+        background: #fafafa;
+    }
+    
+    .ai-messages-area {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .ai-message {
+        display: flex;
+        margin-bottom: 0;
+        padding: 12px 15px;
+        border-radius: 12px;
+        max-width: 75%;
+        word-wrap: break-word;
+        font-size: 14px;
+        line-height: 1.5;
+    }
+    
+    .ai-message.user-message {
+        background: #f5f5f5;
+        margin-left: auto;
+        margin-right: 0;
+        color: #333;
+        border: 1px solid #e0e0e0;
+    }
+    
+    .ai-message.assistant-message {
+        background: #e8e8e8;
+        margin-left: 0;
+        margin-right: auto;
+        color: #333;
+    }
+    
+    .ai-message strong {
+        display: none;
+    }
+    
+    /* Input Container */
+    .ai-input-container {
+        display: flex;
+        padding: 15px;
+        background: white;
+        border-top: 1px solid #ddd;
+        flex-shrink: 0;
+        border-radius: 0 0 8px 8px;
+        pointer-events: auto;
+    }
+    
+    /* Input Area */
+    .ai-input-area {
+        display: flex;
+        gap: 8px;
+        flex: 1;
+    }
+    
     .ai-input-area textarea {
         flex: 1;
-        padding: 10px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
+        padding: 10px 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
         resize: none;
         font-size: 14px;
+        font-family: inherit;
+        max-height: 100px;
+        pointer-events: auto;
     }
-    .ai-input-area button {
-        padding: 10px 20px;
+    
+    .ai-input-area textarea:focus {
+        outline: none;
+        border-color: #0066cc;
+        box-shadow: 0 0 0 3px rgba(0,102,204,0.1);
+    }
+    
+    .send-button {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
         background: #0066cc;
         color: white;
         border: none;
-        border-radius: 4px;
         cursor: pointer;
-        white-space: nowrap;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        transition: all 0.2s ease;
+        flex-shrink: 0;
+        pointer-events: auto;
     }
-    .ai-input-area button:hover {
+    
+    .send-button:hover:not(:disabled) {
         background: #0052a3;
     }
-    .ai-messages-area {
-        padding: 20px;
-        margin-bottom: 120px;
-        min-height: 200px;
+    
+    .send-button:disabled {
+        background: #ccc;
+        cursor: not-allowed;
     }
-    .ai-message {
-        margin-bottom: 20px;
-        padding: 15px;
-        border-radius: 8px;
-        max-width: 80%;
-    }
-    .ai-message.user {
-        background: #e3f2fd;
-        margin-left: auto;
-        text-align: right;
-    }
-    .ai-message.ai {
-        background: #f5f5f5;
-        margin-right: auto;
-    }
-    .ai-sidepanel {
+    
+    /* Hammer Bubble */
+    .ai-chat-bubble {
         position: fixed;
-        right: 0;
-        top: 100px;
-        width: 300px;
-        height: calc(100vh - 200px);
-        background: white;
-        border-left: 1px solid #ddd;
-        padding: 15px;
-        overflow-y: auto;
-        z-index: 999;
+        bottom: 20px;
+        right: 20px;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: #0066cc;
+        color: white;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+        pointer-events: auto;
+        z-index: 1100;
+        transition: all 0.4s ease-out;
     }
-    .sidepanel-header {
-        font-weight: bold;
-        margin-bottom: 15px;
-        font-size: 16px;
+    
+    /* Hammer icon using pseudo-element */
+    .ai-chat-bubble::before {
+        content: "🔨";
+        font-size: 24px;
+        line-height: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .ai-chat-bubble:hover {
+        background: #0052a3;
+        transform: scale(1.1);
+    }
+    
+    /* Video Player Container */
+    .video-player-container {
+        padding: 8px;
+    }
+    
+    .video-player-container iframe {
+        max-width: 100%;
+        border-radius: 4px;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .ai-chat-wrapper {
+            left: 0;
+            right: 60px;
+            gap: 0;
+            padding: 0;
+        }
+        
+        .ai-sidebar-panel {
+            position: absolute;
+            width: 260px;
+            height: 100%;
+            border-radius: 0;
+            left: 0;
+            top: 0;
+        }
+        
+        .ai-chat-interface {
+            width: 100%;
+            border-radius: 0;
+            height: 100%;
+        }
+        
+        .ai-message {
+            max-width: 85%;
+        }
+        
+        .ai-chat-bubble {
+            bottom: 15px;
+            right: 15px;
+            width: 45px;
+            height: 45px;
+        }
     }
     </style>';
 }
