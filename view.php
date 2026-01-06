@@ -23,10 +23,10 @@
  */
 
 require('../../config.php');
-require_once($CFG->dirroot.'/mod/craftpilot/lib.php');
+require_once($CFG->dirroot . '/mod/craftpilot/lib.php');
 
 $id = optional_param('id', 0, PARAM_INT); // Course module ID.
-$a  = optional_param('a', 0, PARAM_INT);  // CraftPilot instance ID.
+$a = optional_param('a', 0, PARAM_INT);  // CraftPilot instance ID.
 
 if ($id) {
     [$course, $cm] = get_course_and_cm_from_cmid($id, 'craftpilot');
@@ -56,7 +56,7 @@ $completion->set_module_viewed($cm);
 
 // Setup page.
 $PAGE->set_url('/mod/craftpilot/view.php', ['id' => $cm->id]);
-$PAGE->set_title($course->shortname.': '.$instance->name);
+$PAGE->set_title($course->shortname . ': ' . $instance->name);
 $PAGE->set_heading($course->fullname);
 $PAGE->set_context($context);
 $PAGE->set_activity_record($instance);
@@ -92,17 +92,17 @@ echo $OUTPUT->box_end();
 if ($instance->enable_promptbar) {
     // Load marked.js for markdown rendering.
     $PAGE->requires->js(new moodle_url('https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.js'), true);
-    
+
     // Load chat interface.
     $PAGE->requires->js_call_amd('mod_craftpilot/chat_interface', 'init', [
         $cm->id,
         $course->id,
         $instance->id
     ]);
-    
+
     // Output chat interface HTML.
     echo '<div class="ai-chat-wrapper" id="ai-chat-wrapper">';
-    
+
     // Left unified sidebar panel (Conversations + Documents)
     echo '<div class="ai-sidebar-panel" id="ai-sidebar-panel">';
     echo '<div class="ai-sidebar-section conversations-section">';
@@ -119,7 +119,7 @@ if ($instance->enable_promptbar) {
 
     // Chat interface container (hidden by default, slides up from bottom)
     echo '<div id="ai-chat-interface" class="ai-chat-interface">';
-    
+
     // Conversation header with name
     echo '<div class="ai-chat-header">';
     // Sidebar toggle handle
@@ -128,28 +128,28 @@ if ($instance->enable_promptbar) {
     echo '</button>';
     echo '<span id="current-conversation-title" class="conversation-title">Chat</span>';
     echo '</div>';
-    
+
     // Messages container (scrollable)
     echo '<div class="ai-messages-wrapper">';
     echo '<div class="ai-messages-area" id="messages-area"></div>';
     echo '</div>';
-    
+
     // Chat input area
     echo '<div class="ai-input-container">';
     echo '<div class="ai-input-area">';
-    echo '<textarea id="user-input" placeholder="'.get_string('promptplaceholder', 'craftpilot').'" rows="2"></textarea>';
+    echo '<textarea id="user-input" placeholder="' . get_string('promptplaceholder', 'craftpilot') . '" rows="2"></textarea>';
     echo '<button id="send-btn" class="send-button"><i class="fa fa-paper-plane"></i></button>';
     echo '</div>';
     echo '</div>';
-    
+
     echo '</div>'; // .ai-chat-interface
-    
+
     // Hammer bubble button (appears in footer)
     echo '<button id="ai-chat-toggle" class="ai-chat-bubble" title="Open CraftPilot Chat">';
     echo '</button>';
-    
+
     echo '</div>'; // .ai-chat-wrapper
-    
+
     // Add comprehensive CSS for chat interface.
     echo '<style>
     /* Chat Wrapper - Main Container */
