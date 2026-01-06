@@ -117,16 +117,15 @@ if ($instance->enable_promptbar) {
     echo '</div>';
     echo '</div>';
 
-    // Sidebar toggle handle
-    echo '<button id="ai-sidebar-toggle" class="ai-sidebar-toggle" title="Toggle sidebar" aria-label="Toggle sidebar">';
-    echo '<span class="ai-sidebar-toggle-arrow">◀</span>';
-    echo '</button>';
-    
     // Chat interface container (hidden by default, slides up from bottom)
     echo '<div id="ai-chat-interface" class="ai-chat-interface">';
     
     // Conversation header with name
     echo '<div class="ai-chat-header">';
+    // Sidebar toggle handle
+    echo '<button id="ai-sidebar-toggle" class="ai-sidebar-toggle" title="Toggle sidebar" aria-label="Toggle sidebar">';
+    echo '<i class="fa-solid fa-file"></i>';
+    echo '</button>';
     echo '<span id="current-conversation-title" class="conversation-title">Chat</span>';
     echo '</div>';
     
