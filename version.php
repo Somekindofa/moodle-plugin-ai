@@ -25,7 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'mod_craftpilot';
-$plugin->version = 2026011400; // Renamed from aiassistant to craftpilot
+$plugin->version = 2025121601; // Renamed from aiassistant to craftpilot
 $plugin->requires = 2022041900; // Moodle 4.1
 $plugin->maturity = MATURITY_ALPHA;
 $plugin->release = '1.0.0-alpha'; // First mod release

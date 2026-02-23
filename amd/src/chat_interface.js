@@ -27,13 +27,13 @@ let conversationTitleElement;
 export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
     // IMMEDIATE LOGGING - debug if this function is called
     console.log('🔨 CraftPilot init() function called!');
-    console.log('Parameters:', { moduleCmId, moduleCourseId, moduleInstanceId });
-
+    console.log('Parameters:', {moduleCmId, moduleCourseId, moduleInstanceId});
+    
     cmId = moduleCmId;
     courseId = moduleCourseId;
     instanceId = moduleInstanceId;
 
-    console.log('CraftPilot: Initializing...', { cmId, courseId, instanceId });
+    console.log('CraftPilot: Initializing...', {cmId, courseId, instanceId});
 
     const initializeChat = () => {
         console.log('🔨 initializeChat() starting...');
@@ -60,7 +60,7 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
         conversationTitleElement = document.getElementById("current-conversation-title");
         sidebarPanel = document.getElementById("ai-sidebar-panel");
         sidebarToggle = document.getElementById("ai-sidebar-toggle");
-
+        
         console.log('🔨 Element status:', {
             chatWrapper: !!chatWrapper,
             chatToggleButton: !!chatToggleButton,
@@ -71,7 +71,7 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
             sidebarPanel: !!sidebarPanel,
             sidebarToggle: !!sidebarToggle
         });
-
+        
         conversationsList = document.getElementById("conversations-list");
         documentsList = document.getElementById("documents-list");
         videoPlayerContainer = document.getElementById("video-player-container");
@@ -97,7 +97,7 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
         chatToggleButton.addEventListener("click", toggleChatInterface);
         if (sidebarToggle) sidebarToggle.addEventListener("click", toggleSidebarPanel);
         sendButton.addEventListener("click", sendMessage);
-
+        
         chatInput.addEventListener("keypress", (e) => {
             if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
@@ -106,46 +106,6 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
         });
 
         chatInput.addEventListener('input', autoResizeTextarea);
-
-        // Initially hide sidebar toggle since chat starts collapsed
-        if (sidebarToggle) {
-            sidebarToggle.style.display = 'none';
-            sidebarToggle.style.backgroundColor = '#0052a3';
-            sidebarToggle.style.border = 'none';
-            sidebarToggle.style.borderRadius = '50%';
-            sidebarToggle.style.width = '32px';
-            sidebarToggle.style.height = '32px';
-            sidebarToggle.style.display = 'flex';
-            sidebarToggle.style.alignItems = 'center';
-            sidebarToggle.style.justifyContent = 'center';
-            sidebarToggle.style.marginRight = '10px';
-            const icon = sidebarToggle.querySelector('i');
-            if (icon) {
-                icon.style.color = 'white';
-                icon.style.fontSize = '14px';
-            }
-        }
-
-        // Style the chat header to display items in a row
-        const chatHeader = document.querySelector('.ai-chat-header');
-        if (chatHeader) {
-            chatHeader.style.display = 'flex';
-            chatHeader.style.alignItems = 'center';
-        }
-
-        // Add hover effects
-        if (sidebarToggle) {
-            sidebarToggle.addEventListener('mouseenter', () => {
-                if (!sidebarPanel.classList.contains('expanded')) {
-                    sidebarToggle.style.backgroundColor = '#003d7a';
-                }
-            });
-            sidebarToggle.addEventListener('mouseleave', () => {
-                if (!sidebarPanel.classList.contains('expanded')) {
-                    sidebarToggle.style.backgroundColor = '#0052a3';
-                }
-            });
-        }
 
         // Initialize conversation for this instance
         initializeConversation();
@@ -199,12 +159,10 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
             sidebarPanel.classList.remove('expanded');
             if (chatWrapper) chatWrapper.classList.remove('expanded');
             if (sidebarToggle) sidebarToggle.classList.remove('expanded');
-            if (sidebarToggle) sidebarToggle.querySelector('.ai-sidebar-toggle-arrow').textContent = '<';
-            if (sidebarToggle) sidebarToggle.style.display = 'none';
+            if (sidebarToggle) sidebarToggle.querySelector('.ai-sidebar-toggle-arrow').textContent = '◀';
         } else {
             chatInterface.classList.add('expanded');
             if (chatWrapper) chatWrapper.classList.add('expanded');
-            if (sidebarToggle) sidebarToggle.style.display = 'block';
             chatInput.focus();
         }
     };
@@ -220,20 +178,12 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
         const isExpanded = sidebarPanel.classList.contains('expanded');
         if (isExpanded) {
             sidebarPanel.classList.remove('expanded');
-            if (sidebarToggle) {
-                sidebarToggle.classList.remove('expanded');
-                sidebarToggle.style.backgroundColor = '#0052a3';
-                const icon = sidebarToggle.querySelector('i');
-                if (icon) icon.style.color = 'white';
-            }
+            if (sidebarToggle) sidebarToggle.classList.remove('expanded');
+            if (sidebarToggle) sidebarToggle.querySelector('.ai-sidebar-toggle-arrow').textContent = '◀';
         } else {
             sidebarPanel.classList.add('expanded');
-            if (sidebarToggle) {
-                sidebarToggle.classList.add('expanded');
-                sidebarToggle.style.backgroundColor = 'white';
-                const icon = sidebarToggle.querySelector('i');
-                if (icon) icon.style.color = '#FFD43B';
-            }
+            if (sidebarToggle) sidebarToggle.classList.add('expanded');
+            if (sidebarToggle) sidebarToggle.querySelector('.ai-sidebar-toggle-arrow').textContent = '▶';
         }
     };
 
@@ -251,7 +201,7 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
      */
     const populateConversationsList = (conversations, activeId) => {
         conversationsList.innerHTML = '';
-
+        
         conversations.forEach((conv) => {
             const convId = String(conv.conversation_id || conv.id);
             const item = document.createElement('div');
@@ -260,25 +210,25 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
             if (convId === String(activeId)) {
                 item.classList.add('active');
             }
-
+            
             const meta = document.createElement('div');
             meta.className = 'conversation-meta';
 
             const title = document.createElement('strong');
             title.textContent = conv.title || 'Chat';
             meta.appendChild(title);
-
+            
             const timestamp = document.createElement('div');
             timestamp.style.fontSize = '11px';
             timestamp.style.color = '#999';
             timestamp.textContent = new Date(conv.created_time || conv.created).toLocaleDateString();
             meta.appendChild(timestamp);
-
+            
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'conversation-delete';
             deleteBtn.title = 'Delete conversation';
             deleteBtn.setAttribute('aria-label', 'Delete conversation');
-            deleteBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+            deleteBtn.textContent = '🗑';
             deleteBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 deleteConversation(convId);
@@ -299,7 +249,7 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
         currentConversationId = targetId;
         currentConversationTitle = title;
         updateConversationHeader();
-
+        
         if (conversationsList) {
             conversationsList.querySelectorAll('.conversation-item').forEach(item => {
                 if (item.dataset.conversationId === targetId) {
@@ -309,7 +259,7 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
                 }
             });
         }
-
+        
         messagesArea.innerHTML = '';
         loadMessagesFromDatabase(targetId);
     };
@@ -428,10 +378,10 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
      */
     const displayMessages = (messages) => {
         messagesArea.innerHTML = '';
-
+        
         messages.forEach((message) => {
             const messageDiv = document.createElement('div');
-
+            
             if (message.role === 'user') {
                 messageDiv.className = 'ai-message user-message';
                 messageDiv.textContent = message.content;
@@ -440,7 +390,7 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
                 const content = marked ? marked.parse(message.content) : escapeHtml(message.content);
                 messageDiv.innerHTML = content;
             }
-
+            
             messagesArea.appendChild(messageDiv);
         });
 
@@ -452,7 +402,7 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
      */
     const sendMessage = () => {
         const userMessage = chatInput.value.trim();
-
+        
         if (!userMessage) {
             return;
         }
@@ -466,23 +416,23 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
         // Disable input
         chatInput.disabled = true;
         sendButton.disabled = true;
-
+        
         // Display user message
         const userDiv = document.createElement('div');
         userDiv.className = 'ai-message user-message';
         userDiv.textContent = userMessage;
         messagesArea.appendChild(userDiv);
-
+        
         // Clear input
         chatInput.value = '';
         autoResizeTextarea();
-
+        
         // Scroll to bottom
         messagesArea.parentElement.scrollTop = messagesArea.parentElement.scrollHeight;
-
+        
         // Save user message
         saveMessageToDatabase(currentConversationId, 'user', userMessage);
-
+        
         // Send to AI
         sendFireworksChatMessage(userMessage);
     };
@@ -512,7 +462,7 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
                 }
 
                 const apiKey = response.api_key;
-
+                
                 // Prepare request
                 const requestBody = {
                     message: userMessage,
@@ -527,86 +477,86 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
                     },
                     body: JSON.stringify(requestBody)
                 })
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('Network response was not ok');
-                        }
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
 
-                        const reader = response.body.getReader();
-                        const decoder = new TextDecoder();
-                        let buffer = '';
-                        let assistantResponse = '';
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+                    let assistantResponse = '';
 
-                        // Replace loading message with empty assistant message
-                        loadingDiv.innerHTML = '<span class="ai-response-content"></span>';
-                        const contentSpan = loadingDiv.querySelector('.ai-response-content');
+                    // Replace loading message with empty assistant message
+                    loadingDiv.innerHTML = '<span class="ai-response-content"></span>';
+                    const contentSpan = loadingDiv.querySelector('.ai-response-content');
 
-                        const readStream = () => {
-                            return reader.read().then(({ done, value }) => {
-                                if (done) {
-                                    // Save complete response
-                                    saveMessageToDatabase(currentConversationId, 'assistant', assistantResponse);
+                    const readStream = () => {
+                        return reader.read().then(({done, value}) => {
+                            if (done) {
+                                // Save complete response
+                                saveMessageToDatabase(currentConversationId, 'assistant', assistantResponse);
+                                
+                                // Re-enable input
+                                chatInput.disabled = false;
+                                sendButton.disabled = false;
+                                chatInput.focus();
+                                return;
+                            }
 
-                                    // Re-enable input
-                                    chatInput.disabled = false;
-                                    sendButton.disabled = false;
-                                    chatInput.focus();
-                                    return;
-                                }
+                            buffer += decoder.decode(value, {stream: true});
+                            const lines = buffer.split('\n');
+                            buffer = lines.pop(); // Keep incomplete line
 
-                                buffer += decoder.decode(value, { stream: true });
-                                const lines = buffer.split('\n');
-                                buffer = lines.pop(); // Keep incomplete line
+                            lines.forEach(line => {
+                                if (!line.trim()) return;
 
-                                lines.forEach(line => {
-                                    if (!line.trim()) return;
+                                try {
+                                    const parsed = JSON.parse(line);
 
-                                    try {
-                                        const parsed = JSON.parse(line);
-
-                                        // Handle Python backend format: {event: 'message', content: [...], documents: [...]}
-                                        if (parsed.event === 'message' && parsed.content) {
-                                            // Extract text from content array
-                                            parsed.content.forEach(msg => {
-                                                if (msg.content) {
-                                                    assistantResponse += msg.content;
-                                                }
-                                            });
-                                            contentSpan.innerHTML = marked ? marked.parse(assistantResponse) : escapeHtml(assistantResponse);
-                                            messagesArea.parentElement.scrollTop = messagesArea.parentElement.scrollHeight;
-
-                                            // Show documents if present
-                                            if (parsed.documents && parsed.documents.length > 0) {
-                                                showDocuments(parsed.documents);
+                                    // Handle Python backend format: {event: 'message', content: [...], documents: [...]}
+                                    if (parsed.event === 'message' && parsed.content) {
+                                        // Extract text from content array
+                                        parsed.content.forEach(msg => {
+                                            if (msg.content) {
+                                                assistantResponse += msg.content;
                                             }
-                                        } else if (parsed.content === '[DONE]') {
-                                            return;
-                                        } else if (parsed.type === 'video_segment') {
-                                            displayVideoSegment(parsed.video_id, parsed.start_time, parsed.end_time);
-                                        } else if (parsed.type === 'error' || parsed.event === 'error') {
-                                            const errorMsg = parsed.message || parsed.content;
-                                            contentSpan.innerHTML = '<em style="color: red;">Error: ' + escapeHtml(errorMsg) + '</em>';
-                                            chatInput.disabled = false;
-                                            sendButton.disabled = false;
-                                            return;
+                                        });
+                                        contentSpan.innerHTML = marked ? marked.parse(assistantResponse) : escapeHtml(assistantResponse);
+                                        messagesArea.parentElement.scrollTop = messagesArea.parentElement.scrollHeight;
+                                        
+                                        // Show documents if present
+                                        if (parsed.documents && parsed.documents.length > 0) {
+                                            showDocuments(parsed.documents);
                                         }
-                                    } catch (e) {
-                                        console.error('CraftPilot: Failed to parse streaming data:', e, 'Line:', line);
+                                    } else if (parsed.content === '[DONE]') {
+                                        return;
+                                    } else if (parsed.type === 'video_segment') {
+                                        displayVideoSegment(parsed.video_id, parsed.start_time, parsed.end_time);
+                                    } else if (parsed.type === 'error' || parsed.event === 'error') {
+                                        const errorMsg = parsed.message || parsed.content;
+                                        contentSpan.innerHTML = '<em style="color: red;">Error: ' + escapeHtml(errorMsg) + '</em>';
+                                        chatInput.disabled = false;
+                                        sendButton.disabled = false;
+                                        return;
                                     }
-                                });
-
-                                return readStream();
+                                } catch (e) {
+                                    console.error('CraftPilot: Failed to parse streaming data:', e, 'Line:', line);
+                                }
                             });
-                        };
 
-                        return readStream();
-                    })
-                    .catch(error => {
-                        console.error('CraftPilot: Error streaming response:', error);
-                        loadingDiv.innerHTML = '<em style="color: red;">Failed to get response. Please check if the RAG backend is running.</em>';
-                        chatInput.disabled = false;
-                        sendButton.disabled = false;
-                    });
+                            return readStream();
+                        });
+                    };
+
+                    return readStream();
+                })
+                .catch(error => {
+                    console.error('CraftPilot: Error streaming response:', error);
+                    loadingDiv.innerHTML = '<em style="color: red;">Failed to get response. Please check if the RAG backend is running.</em>';
+                    chatInput.disabled = false;
+                    sendButton.disabled = false;
+                });
             })
             .catch((error) => {
                 console.error('CraftPilot: Failed to get credentials:', error);
@@ -650,7 +600,7 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
         if (!documentsList) return;
 
         documentsList.innerHTML = '';
-
+        
         if (documents.length === 0) {
             return;
         }
@@ -658,18 +608,18 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
         documents.forEach((doc) => {
             const item = document.createElement('div');
             item.className = 'document-item';
-
+            
             const title = document.createElement('strong');
             title.textContent = doc.title || 'Document';
             item.appendChild(title);
-
+            
             const content = document.createElement('p');
             content.style.fontSize = '12px';
             content.style.marginTop = '4px';
             content.style.color = '#666';
             content.textContent = doc.content.substring(0, 150) + (doc.content.length > 150 ? '...' : '');
             item.appendChild(content);
-
+            
             documentsList.appendChild(item);
         });
     };
@@ -710,7 +660,7 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
         const hours = Math.floor(seconds / 3600);
         const minutes = Math.floor((seconds % 3600) / 60);
         const secs = Math.floor(seconds % 60);
-
+        
         return [
             hours.toString().padStart(2, '0'),
             minutes.toString().padStart(2, '0'),
