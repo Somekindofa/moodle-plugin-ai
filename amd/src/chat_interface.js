@@ -515,7 +515,10 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
                                     const parsed = JSON.parse(line);
 
                                     // Handle Python backend format: {event: 'message', content: [...], documents: [...]}
-                                    if (parsed.event === 'message' && parsed.content) {
+                                    if (parsed.event === 'video_metadata' && parsed.data) {
+                                        const vm = parsed.data;
+                                        displayVideoSegment(vm.video_id, vm.start_time, vm.end_time);
+                                    } else if (parsed.event === 'message' && parsed.content) {
                                         // Extract text from content array
                                         parsed.content.forEach(msg => {
                                             if (msg.content) {
@@ -524,7 +527,7 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
                                         });
                                         contentSpan.innerHTML = marked ? marked.parse(assistantResponse) : escapeHtml(assistantResponse);
                                         messagesArea.parentElement.scrollTop = messagesArea.parentElement.scrollHeight;
-                                        
+
                                         // Show documents if present
                                         if (parsed.documents && parsed.documents.length > 0) {
                                             showDocuments(parsed.documents);
@@ -610,14 +613,15 @@ export const init = (moduleCmId, moduleCourseId, moduleInstanceId) => {
             item.className = 'document-item';
             
             const title = document.createElement('strong');
-            title.textContent = doc.title || 'Document';
+            title.textContent = (doc.metadata && doc.metadata.title) || doc.title || 'Document';
             item.appendChild(title);
-            
+
+            const rawContent = doc.page_content || doc.content || '';
             const content = document.createElement('p');
             content.style.fontSize = '12px';
             content.style.marginTop = '4px';
             content.style.color = '#666';
-            content.textContent = doc.content.substring(0, 150) + (doc.content.length > 150 ? '...' : '');
+            content.textContent = rawContent.substring(0, 150) + (rawContent.length > 150 ? '...' : '');
             item.appendChild(content);
             
             documentsList.appendChild(item);
