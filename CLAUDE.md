@@ -72,9 +72,9 @@ Read/write for `craftpilot_msg`. Actions: `save`, `load`.
 
 Single AMD module with one public export: `init(cmId, courseId, instanceId, proxyUrl)`.
 
-**State object** (`state`) holds: `cmId`, `courseId`, `instanceId`, `chatProxyUrl`, `currentConvId`, `conversations[]`, `sidebarOpen`, `chatOpen`, `streaming`, `sources[]`.
+**State object** (`state`) holds: `cmId`, `courseId`, `instanceId`, `chatProxyUrl`, `currentConvId`, `conversations[]`, `sidebarOpen`, `chatOpen`, `streaming`, `sources[]`, `selectedDomain` (string|null).
 
-**DOM object** (`dom`) is populated by `initDOM()` mapping element IDs. Required elements: `toggle`, `wrapper`, `chatBody`, `messages`, `input`, `sendBtn`.
+**DOM object** (`dom`) is populated by `initDOM()` mapping element IDs. Required elements: `toggle`, `wrapper`, `chatBody`, `messages`, `input`, `sendBtn`. Optional: `domainBar` (`#cp-domain-bar`).
 
 **Key call chain for sending a message:**
 ```
@@ -98,7 +98,7 @@ sendMessage()
     - `.cp-sidebar` — conversation list, collapses via `width: 0 → var(--cp-sidebar-w)`
     - `.cp-panel` — main chat area (header, messages, sources, input)
 
-CSS state classes: `cp-wrapper--open`, `cp-wrapper--sidebar-open`, `cp-sidebar--open`, `cp-sources--open`, `cp-sources--visible`, `cp-toggle-pill--active`.
+CSS state classes: `cp-wrapper--open`, `cp-wrapper--sidebar-open`, `cp-sidebar--open`, `cp-sources--open`, `cp-sources--visible`, `cp-toggle-pill--active`, `cp-domain-btn--active`.
 
 ---
 
@@ -121,6 +121,30 @@ CSS state classes: `cp-wrapper--open`, `cp-wrapper--sidebar-open`, `cp-sidebar--
 
 - `mod/craftpilot:view` — granted to all roles including Guest
 - `mod/craftpilot:addinstance` — Teacher, Manager only
+
+---
+
+## Domain Selector
+
+Three pill buttons above the chat input let the user focus the LLM on a specific craft domain. Clicking again deselects.
+
+**Current domains**: `Soufflerie de verre`, `Scellerie nautique`, `Ganterie` (hardcoded in the Mustache template — add more buttons there).
+
+**Data flow**:
+1. JS stores the selection in `state.selectedDomain` and applies `cp-domain-btn--active` to the active button.
+2. `streamFromBackend()` includes `selected_domain` in the POST body when set.
+3. `chat_proxy.php` forwards the entire request body verbatim — no change needed there.
+4. FastAPI `ChatRequest` model accepts `selected_domain: Optional[str]`.
+5. `pipeline.generate_response()` passes it as part of the initial LangGraph state dict.
+6. `ConversationState` carries `selected_domain: Optional[str]` through all graph nodes.
+7. `rag_service.py` injects the domain at three points:
+   - **`route_query()`** — hints the router that the user is focused on that domain.
+   - **`generate()`** (RAG path) — fills `{specific_domain}` in the `PromptTemplate` with `"Vous vous concentrez particulièrement sur le domaine : {domain}."`.
+   - **`direct_generate()`** (LLM-only path) — appends the same line to the direct prompt string.
+
+**Adding a new domain**: add a `<button class="cp-domain-btn" data-domain="Nom du domaine">` to the `#cp-domain-bar` div in `templates/chat_interface.mustache`. No backend change needed.
+
+**Prompt template note**: The RAG `PromptTemplate` in `rag_service.py` uses `input_variables=["history", "context", "query", "specific_domain"]`. The `{specific_domain}` placeholder must always be supplied (empty string when no domain is selected).
 
 ---
 

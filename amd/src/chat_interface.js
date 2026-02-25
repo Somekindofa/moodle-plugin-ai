@@ -27,6 +27,7 @@ const state = {
     chatOpen:      false,
     streaming:     false,
     sources:       [],
+    selectedDomain: null,  // craft domain selected by the user, forwarded to LLM
 };
 
 /* DOM element references — populated in initDOM() */
@@ -74,6 +75,7 @@ const initDOM = () => {
         sourcesHeader: 'cp-sources-header',
         sourcesCount:  'cp-sources-count',
         sourcesScroll: 'cp-sources-scroll',
+        domainBar:     'cp-domain-bar',
         input:         'cp-input',
         sendBtn:       'cp-send',
     };
@@ -111,6 +113,23 @@ const bindEvents = () => {
     dom.input.addEventListener('input', autoResize);
 
     dom.sourcesHeader?.addEventListener('click', toggleSources);
+
+    /* Domain selector — toggle active domain on click, click again to deselect */
+    dom.domainBar?.addEventListener('click', (e) => {
+        const btn = e.target.closest('.cp-domain-btn');
+        if (!btn) return;
+        const domain = btn.dataset.domain;
+        if (state.selectedDomain === domain) {
+            // Deselect
+            state.selectedDomain = null;
+            btn.classList.remove('cp-domain-btn--active');
+        } else {
+            // Switch to new domain
+            state.selectedDomain = domain;
+            dom.domainBar.querySelectorAll('.cp-domain-btn').forEach(b => b.classList.remove('cp-domain-btn--active'));
+            btn.classList.add('cp-domain-btn--active');
+        }
+    });
 };
 
 /* ============================================================
@@ -1027,13 +1046,17 @@ const streamFromBackend = (userMessage) => {
 
     Ajax.call([{ methodname: 'mod_craftpilot_get_user_credentials', args: {} }])[0]
         .then(() => {
+            const payload = {
+                message: userMessage,
+                conversation_thread_id: state.currentConvId,
+            };
+            if (state.selectedDomain) {
+                payload.selected_domain = state.selectedDomain;
+            }
             return fetch(state.chatProxyUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    message: userMessage,
-                    conversation_thread_id: state.currentConvId,
-                }),
+                body: JSON.stringify(payload),
             });
         })
         .then((res) => {
