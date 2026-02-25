@@ -11,12 +11,12 @@ defined('MOODLE_INTERNAL') || die();
 require_once($CFG->libdir.'/ddllib.php'); // Include ddllib for xmldb constants
 
 /**
- * Upgrade script for block_aiassistant
+ * Upgrade script for mod_craftpilot
  *
  * @param int $oldversion the version we are upgrading from
  * @return bool result
  */
-function xmldb_block_aiassistant_upgrade($oldversion) {
+function xmldb_craftpilot_upgrade($oldversion) {
     global $DB;
     
     $dbman = $DB->get_manager();
@@ -62,7 +62,7 @@ function xmldb_block_aiassistant_upgrade($oldversion) {
         }
 
         // Aiassistant savepoint reached
-        upgrade_block_savepoint(true, 2025072910, 'aiassistant');
+        upgrade_module_savepoint(true, 2025072910, 'craftpilot');
         error_log("AI Assistant: Upgrade completed successfully");
     }
 
@@ -101,7 +101,7 @@ function xmldb_block_aiassistant_upgrade($oldversion) {
         }
 
         // Aiassistant savepoint reached
-        upgrade_block_savepoint(true, 2025092201, 'aiassistant');
+        upgrade_module_savepoint(true, 2025092201, 'craftpilot');
         error_log("AI Assistant: Conversations table upgrade completed successfully");
     }
 
@@ -140,7 +140,7 @@ function xmldb_block_aiassistant_upgrade($oldversion) {
         }
 
         // Aiassistant savepoint reached
-        upgrade_block_savepoint(true, 2025092304, 'aiassistant');
+        upgrade_module_savepoint(true, 2025092304, 'craftpilot');
         error_log("AI Assistant: Messages table upgrade completed successfully");
     }
 
@@ -202,7 +202,7 @@ function xmldb_block_aiassistant_upgrade($oldversion) {
         }
 
         // Aiassistant savepoint reached
-        upgrade_block_savepoint(true, 2025101901, 'aiassistant');
+        upgrade_module_savepoint(true, 2025101901, 'craftpilot');
         error_log("AI Assistant: Video annotation tables upgrade completed successfully");
     }
 
@@ -262,8 +262,43 @@ function xmldb_block_aiassistant_upgrade($oldversion) {
         }
         
         // Aiassistant savepoint reached
-        upgrade_block_savepoint(true, 2025102001, 'aiassistant');
+        upgrade_module_savepoint(true, 2025102001, 'craftpilot');
         error_log("AI Assistant: Table renaming upgrade completed successfully");
+    }
+
+    // Rename legacy mod_aiassistant tables and migrate config to mod_craftpilot
+    if ($oldversion < 2025121601) {
+        error_log("CraftPilot: Renaming legacy aiassistant tables and migrating config");
+
+        $renames = [
+            'aiassistant' => 'craftpilot',
+            'aiassistant_keys' => 'craftpilot_keys',
+            'aiassistant_conv' => 'craftpilot_conv',
+            'aiassistant_msg' => 'craftpilot_msg',
+            'aiassistant_proj' => 'craftpilot_proj',
+            'aiassistant_videos' => 'craftpilot_videos',
+            'aiassistant_annot' => 'craftpilot_annot'
+        ];
+
+        foreach ($renames as $oldname => $newname) {
+            $oldtable = new xmldb_table($oldname);
+            $newtable = new xmldb_table($newname);
+
+            if ($dbman->table_exists($oldtable) && !$dbman->table_exists($newtable)) {
+                $dbman->rename_table($oldtable, $newname);
+                error_log("CraftPilot: Renamed {$oldname} to {$newname}");
+            }
+        }
+
+        // Migrate mod_aiassistant config entries to mod_craftpilot
+        $oldconfigs = $DB->get_records('config_plugins', ['plugin' => 'mod_aiassistant']);
+        foreach ($oldconfigs as $config) {
+            set_config($config->name, $config->value, 'mod_craftpilot');
+            error_log("CraftPilot: Migrated config {$config->name} to mod_craftpilot");
+        }
+
+        upgrade_module_savepoint(true, 2025121601, 'craftpilot');
+        error_log("CraftPilot: Legacy table/config migration complete");
     }
 
     return true;

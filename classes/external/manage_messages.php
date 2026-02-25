@@ -1,7 +1,7 @@
 <?php
 // This file is part of Moodle - http://moodle.org/
 
-namespace block_aiassistant\external;
+namespace mod_craftpilot\external;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -17,8 +17,8 @@ use context_system;
 /**
  * External API for managing conversation messages
  * 
- * @package    block_aiassistant
- * @copyright  2025 Your Organization
+ * @package    mod_craftpilot
+ * @copyright  2025
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class manage_messages extends external_api {
@@ -63,12 +63,12 @@ class manage_messages extends external_api {
 
         try {
             // Check if database tables exist
-            if (!$DB->get_manager()->table_exists('block_aiassistant_msg')) {
-                return self::error_response('Database table block_aiassistant_msg does not exist');
+            if (!$DB->get_manager()->table_exists('craftpilot_msg')) {
+                return self::error_response('Database table craftpilot_msg does not exist');
             }
 
-            if (!$DB->get_manager()->table_exists('block_aiassistant_conv')) {
-                return self::error_response('Database table block_aiassistant_conv does not exist');
+            if (!$DB->get_manager()->table_exists('craftpilot_conv')) {
+                return self::error_response('Database table craftpilot_conv does not exist');
             }
 
             // Verify user owns the conversation
@@ -123,7 +123,7 @@ class manage_messages extends external_api {
         try {
             // Get next sequence number for this conversation
             $next_sequence = $DB->get_field_sql(
-                'SELECT COALESCE(MAX(sequence_number), 0) + 1 FROM {block_aiassistant_msg} WHERE conversation_id = ?',
+                'SELECT COALESCE(MAX(sequence_number), 0) + 1 FROM {craftpilot_msg} WHERE conversation_id = ?',
                 [$conversation_id]
             );
 
@@ -135,7 +135,7 @@ class manage_messages extends external_api {
             $record->sequence_number = $next_sequence;
             $record->metadata = $metadata;
 
-            $id = $DB->insert_record('block_aiassistant_msg', $record);
+            $id = $DB->insert_record('craftpilot_msg', $record);
 
             // Update conversation's last_updated timestamp
             self::update_conversation_timestamp($conversation_id);
@@ -171,7 +171,7 @@ class manage_messages extends external_api {
         }
 
         try {
-            $messages = $DB->get_records('block_aiassistant_msg', [
+            $messages = $DB->get_records('craftpilot_msg', [
                 'conversation_id' => $conversation_id
             ], 'sequence_number ASC');
 
@@ -208,7 +208,7 @@ class manage_messages extends external_api {
         global $DB;
 
         try {
-            $conversation = $DB->get_record('block_aiassistant_conv', [
+            $conversation = $DB->get_record('craftpilot_conv', [
                 'conversation_id' => $conversation_id,
                 'userid' => $user_id,
                 'is_active' => 1
@@ -231,10 +231,10 @@ class manage_messages extends external_api {
         global $DB;
 
         try {
-            $conversation = $DB->get_record('block_aiassistant_conv', ['conversation_id' => $conversation_id]);
+            $conversation = $DB->get_record('craftpilot_conv', ['conversation_id' => $conversation_id]);
             if ($conversation) {
                 $conversation->last_updated = time();
-                $DB->update_record('block_aiassistant_conv', $conversation);
+                $DB->update_record('craftpilot_conv', $conversation);
             }
         } catch (\Exception $e) {
             self::log_error('Failed to update conversation timestamp', $e, ['conversation_id' => $conversation_id]);

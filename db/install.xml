@@ -1,7 +1,27 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="blocks/aiassistant/db" VERSION="20250729" COMMENT="XMLDB file for Moodle block_aiassistant">
+<XMLDB PATH="mod/craftpilot/db" VERSION="20251211" COMMENT="XMLDB file for Moodle mod_craftpilot">
   <TABLES>
-    <TABLE NAME="block_aiassistant_keys" COMMENT="Stores API keys for each user">
+    <TABLE NAME="craftpilot" COMMENT="Main activity module instances table">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="course" TYPE="int" LENGTH="10" NOTNULL="true"/>
+        <FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="true"/>
+        <FIELD NAME="intro" TYPE="text" NOTNULL="true"/>
+        <FIELD NAME="introformat" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="content" TYPE="text" NOTNULL="true"/>
+        <FIELD NAME="contentformat" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="1"/>
+        <FIELD NAME="enable_promptbar" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="course_key" TYPE="foreign" FIELDS="course" REFTABLE="course" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="course" UNIQUE="false" FIELDS="course"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="craftpilot_keys" COMMENT="Stores Fireworks API keys for each user">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true"/>
@@ -21,10 +41,11 @@
         <INDEX NAME="fireworks_key_id" UNIQUE="true" FIELDS="fireworks_key_id"/>
       </INDEXES>
     </TABLE>
-    <TABLE NAME="block_aiassistant_conv" COMMENT="Stores conversation metadata for each user">
+    <TABLE NAME="craftpilot_conv" COMMENT="Stores conversation metadata for each user and instance">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="conversation_id" TYPE="char" LENGTH="255" NOTNULL="true"/>
+        <FIELD NAME="instanceid" TYPE="int" LENGTH="10" NOTNULL="true"/>
         <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true"/>
         <FIELD NAME="title" TYPE="char" LENGTH="255" NOTNULL="true"/>
         <FIELD NAME="created_time" TYPE="int" LENGTH="10" NOTNULL="true"/>
@@ -34,15 +55,17 @@
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="instanceid_key" TYPE="foreign" FIELDS="instanceid" REFTABLE="craftpilot" REFFIELDS="id"/>
         <KEY NAME="userid_key" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
       </KEYS>
       <INDEXES>
         <INDEX NAME="conversation_id_unique" UNIQUE="true" FIELDS="conversation_id"/>
+        <INDEX NAME="instanceid_userid" UNIQUE="false" FIELDS="instanceid, userid"/>
         <INDEX NAME="userid_active" UNIQUE="false" FIELDS="userid, is_active"/>
         <INDEX NAME="userid_last_updated" UNIQUE="false" FIELDS="userid, last_updated"/>
       </INDEXES>
     </TABLE>
-    <TABLE NAME="block_aiassistant_msg" COMMENT="Stores individual messages within conversations">
+    <TABLE NAME="craftpilot_msg" COMMENT="Stores individual messages within conversations">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="conversation_id" TYPE="char" LENGTH="255" NOTNULL="true"/>
@@ -54,7 +77,7 @@
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-        <KEY NAME="conversation_fk" TYPE="foreign" FIELDS="conversation_id" REFTABLE="block_aiassistant_conv" REFFIELDS="conversation_id"/>
+        <KEY NAME="conversation_fk" TYPE="foreign" FIELDS="conversation_id" REFTABLE="craftpilot_conv" REFFIELDS="conversation_id"/>
       </KEYS>
       <INDEXES>
         <INDEX NAME="conv_sequence" UNIQUE="false" FIELDS="conversation_id, sequence_number"/>
@@ -63,7 +86,7 @@
         <INDEX NAME="created_time_idx" UNIQUE="false" FIELDS="created_time"/>
       </INDEXES>
     </TABLE>
-    <TABLE NAME="block_aiassistant_proj" COMMENT="Video annotation projects">
+    <TABLE NAME="craftpilot_proj" COMMENT="Video annotation projects">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="true"/>
@@ -77,7 +100,7 @@
         <INDEX NAME="name" UNIQUE="true" FIELDS="name"/>
       </INDEXES>
     </TABLE>
-    <TABLE NAME="block_aiassistant_videos" COMMENT="Uploaded videos for annotation">
+    <TABLE NAME="craftpilot_videos" COMMENT="Uploaded videos for annotation">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="project_id" TYPE="int" LENGTH="10" NOTNULL="true"/>
@@ -89,10 +112,10 @@
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-        <KEY NAME="project_id" TYPE="foreign" FIELDS="project_id" REFTABLE="block_aiassistant_proj" REFFIELDS="id"/>
+        <KEY NAME="project_id" TYPE="foreign" FIELDS="project_id" REFTABLE="craftpilot_proj" REFFIELDS="id"/>
       </KEYS>
     </TABLE>
-    <TABLE NAME="block_aiassistant_annot" COMMENT="Audio annotations with transcriptions">
+    <TABLE NAME="craftpilot_annot" COMMENT="Audio annotations with transcriptions">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="video_id" TYPE="int" LENGTH="10" NOTNULL="true"/>
@@ -108,7 +131,7 @@
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-        <KEY NAME="video_id" TYPE="foreign" FIELDS="video_id" REFTABLE="block_aiassistant_videos" REFFIELDS="id"/>
+        <KEY NAME="video_id" TYPE="foreign" FIELDS="video_id" REFTABLE="craftpilot_videos" REFFIELDS="id"/>
       </KEYS>
       <INDEXES>
         <INDEX NAME="timestamp" UNIQUE="false" FIELDS="timestamp"/>

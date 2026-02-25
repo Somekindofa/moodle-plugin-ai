@@ -1,938 +1,1206 @@
-// Standard license block omitted for brevity
 /**
- * @module     block_aiassistant/chat_interface
- * @copyright  2025 Your Name
+ * CraftPilot Chat Interface
+ *
+ * Full redesign: CSS-class-driven state, Mustache-template DOM,
+ * SSE streaming, source cards (Video / BVH / Text),
+ * Three.js BVH viewer with full FK computation.
+ *
+ * @module     mod_craftpilot/chat_interface
+ * @copyright  2025
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 import * as Ajax from 'core/ajax';
 
-/**
- * Initialize the AI chat interface
- */
-export const init = () => {
-    // Function to initialize the chat interface
-    const initializeChat = () => {
-        console.log('AI Chat: Initializing...');
+/* ============================================================
+   STATE
+   ============================================================ */
+const state = {
+    cmId:          null,
+    courseId:      null,
+    instanceId:    null,
+    chatProxyUrl:  null,   // set from PHP via init() — avoids hard-coding 127.0.0.1 in client JS
+    currentConvId:    null,
+    currentConvTitle: 'CraftPilot',
+    conversations: [],
+    sidebarOpen:   false,
+    chatOpen:      false,
+    streaming:     false,
+    sources:       [],
+};
+
+/* DOM element references — populated in initDOM() */
+const dom = {};
+
+/* ============================================================
+   PUBLIC INIT (AMD entry point)
+   ============================================================ */
+export const init = (moduleCmId, moduleCourseId, moduleInstanceId, chatProxyUrl) => {
+    state.cmId         = moduleCmId;
+    state.courseId     = moduleCourseId;
+    state.instanceId   = moduleInstanceId;
+    state.chatProxyUrl = chatProxyUrl || '/mod/craftpilot/chat_proxy.php';
 
-        const sendButton = document.getElementById("ai-chat-send");
-        const chatInput = document.getElementById("ai-chat-input");
-        const messagesContainer = document.getElementById("ai-chat-messages");
-        const providerSelect = document.getElementById("ai-provider-select");
-        const newConversationBtn = document.getElementById("ai-new-conversation-btn");
-        const conversationsToggle = document.getElementById("ai-conversations-toggle");
-        const conversationsPanel = document.getElementById("ai-conversations-panel");
-        const contentArea = document.getElementById("ai-content-area");
-        const motto = document.getElementById("ai-motto");
-        const resultsArea = document.getElementById("ai-results-area");
-        const documentsSection = document.getElementById("ai-documents-section");
-        const documentsList = document.getElementById("ai-documents-list");
-
-        if (!sendButton || !chatInput || !messagesContainer || !newConversationBtn) {
-            console.error('AI Chat: Required elements not found');
-            return;
-        }
-
-        // Global configuration storage
-        let aiConfig = null;
-        let currentProvider = 'fireworks';
-        let currentConversationThreadId = null;
-
-        // Load AI configuration on startup
-        loadAIConfiguration();
-        loadExistingConversations();
-
-        /**
-         * Displays a list of document paths in the documents section.
-         * Populates the documents section with the provided document paths.
-         * If no documents are provided, displays a "No documents retrieved" message.
-         * 
-         * @param {string[]} documentPaths - Array of document file paths to display
-         */
-        function showDocuments(documentPaths) {
-            // Check if video player already exists, don't clear it
-            const existingVideo = documentsList.querySelector('.ai-video-container');
-            
-            if (documentPaths && documentPaths.length > 0) {
-                const listHTML = `
-                    <div class="ai-documents-list-section">
-                        <h4>Retrieved Documents</h4>
-                        <ul>
-                            ${documentPaths.map(path => `<li>${path}</li>`).join('')}
-                        </ul>
-                    </div>
-                `;
-                
-                if (existingVideo) {
-                    // Append after video
-                    existingVideo.insertAdjacentHTML('afterend', listHTML);
-                } else {
-                    documentsList.innerHTML = listHTML;
-                }
-            } else if (!existingVideo) {
-                documentsList.innerHTML = '<p>No documents retrieved yet.</p>';
-            }
-        }
-
-        /**
-         * Format seconds to MM:SS display format
-         * @param {number} seconds - Time in seconds
-         * @returns {string} Formatted time string (MM:SS)
-         */
-        function formatTime(seconds) {
-            const mins = Math.floor(seconds / 60);
-            const secs = Math.floor(seconds % 60);
-            return `${mins}:${secs.toString().padStart(2, '0')}`;
-        }
-
-        /**
-         * Clear video player when starting new conversation or switching conversations
-         */
-        function clearVideoPlayer() {
-            const existingVideo = documentsList.querySelector('.ai-video-container');
-            if (existingVideo) {
-                existingVideo.remove();
-            }
-        }
-
-        /**
-         * Display video segment with metadata
-         * Creates HTML5 video player with controls and seeks to specified start time
-         * @param {Object} videoMetadata - Video metadata from backend
-         * @param {string} videoMetadata.video_url - URL to video stream endpoint
-         * @param {number} videoMetadata.start_time - Segment start time in seconds
-         * @param {number} videoMetadata.end_time - Segment end time in seconds
-         * @param {string} videoMetadata.filename - Original video filename
-         */
-        function displayVideoSegment(videoMetadata) {
-            if (!videoMetadata || !videoMetadata.video_url) {
-                console.warn('Invalid video metadata received:', videoMetadata);
-                return;
-            }
-
-            const { video_url, start_time, end_time, filename } = videoMetadata;
-            
-            // Show documents section
-            if (documentsSection) {
-                documentsSection.style.display = 'block';
-            }
-            
-            // Build video URL with backend endpoint
-            // Backend is at http://127.0.0.1:8000, video_url is relative path
-            const fullVideoUrl = `http://127.0.0.1:8000${video_url}`;
-            
-            // Create video container HTML
-            const videoHTML = `
-                <div class="ai-video-container">
-                    <h4>Retrieved Video Segment</h4>
-                    <p><strong>File:</strong> ${filename}</p>
-                    <p><strong>Segment:</strong> ${formatTime(start_time)} - ${formatTime(end_time)}</p>
-                    <video id="ai-video-player" controls preload="metadata" style="width: 100%; max-height: 400px; border-radius: 4px; background: #000;">
-                        <source src="${fullVideoUrl}#t=${start_time},${end_time}" type="video/mp4">
-                        Your browser does not support video playback.
-                    </video>
-                </div>
-            `;
-            
-            // Insert at the beginning of documents list
-            documentsList.insertAdjacentHTML('afterbegin', videoHTML);
-            
-            // Get video element and configure
-            const videoPlayer = document.getElementById('ai-video-player');
-            
-            if (videoPlayer) {
-                // Seek to start time when metadata loads
-                videoPlayer.addEventListener('loadedmetadata', () => {
-                    console.log('Video metadata loaded, seeking to:', start_time);
-                    videoPlayer.currentTime = start_time;
-                });
-                
-                // Optional: Pause at end_time
-                videoPlayer.addEventListener('timeupdate', () => {
-                    if (videoPlayer.currentTime >= end_time) {
-                        videoPlayer.pause();
-                    }
-                });
-
-                // Handle video load errors
-                videoPlayer.addEventListener('error', (e) => {
-                    console.error('Video load error:', e);
-                    const errorMsg = document.createElement('p');
-                    errorMsg.style.color = 'red';
-                    errorMsg.textContent = 'Failed to load video segment. The video file may not be accessible.';
-                    videoPlayer.parentElement.appendChild(errorMsg);
-                });
-
-                console.log('Video player configured successfully');
-            }
-        }
-        
-        /**
-         * Show the results area and hide the motto
-         */
-        function showResultsArea() {
-            if (motto) {
-                motto.style.display = 'none';
-            }
-            if (resultsArea) {
-                resultsArea.style.display = 'flex';
-            }
-        }
-        
-        /**
-         * Hide the results area and show the motto
-         */
-        function hideResultsArea() {
-            if (motto) {
-                motto.style.display = 'block';
-            }
-            if (resultsArea) {
-                resultsArea.style.display = 'none';
-            }
-        }
-
-        /**
-         * Load existing conversations from Moodle database
-         */
-        function loadExistingConversations() {
-            Ajax.call([{
-                methodname: 'block_aiassistant_manage_conversations',
-                args: {
-                    action: 'list'
-                },
-                done: function (result) {
-                    if (result && result.success && result.conversations) {
-                        console.log('Existing conversations loaded:', result.conversations);
-                        populateConversationsList(result.conversations);
-                    } else {
-                        console.log('No existing conversations found or failed to load:', result ? result.message : 'No response received');
-                    }
-                },
-                fail: function (error) {
-                    console.error('Failed to load existing conversations:', error);
-                }
-            }]);
-        }
-
-        /**
-         * Populate the conversations list with existing conversations
-         */
-        function populateConversationsList(conversations) {
-            const conversationList = document.getElementById('ai-conversation-list');
-
-            // Clear existing items
-            conversationList.innerHTML = '';
-
-            // Add each conversation to the list
-            conversations.forEach(conversation => {
-                const conversationItem = createConversationElement(conversation.conversation_id, conversation.title);
-                conversationList.appendChild(conversationItem);
-
-                // Add click listener to the item
-                setupConversationItemListener(conversationItem);
-            });
-
-            console.log(`Populated ${conversations.length} conversations in the list`);
-        }
-
-        /**
-         * Create a conversation element with title and delete button
-         */
-        function createConversationElement(conversationId, title) {
-            const conversationItem = document.createElement('div');
-            conversationItem.className = 'ai-conversation-item';
-            conversationItem.setAttribute('data-conversation-id', conversationId);
-
-            const titleSpan = document.createElement('span');
-            titleSpan.className = 'ai-conversation-title';
-            titleSpan.textContent = title;
-
-            const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'ai-conversation-delete-btn';
-            deleteBtn.textContent = '×';
-            deleteBtn.title = 'Delete conversation';
-            deleteBtn.type = 'button';
-
-            // Add click handler for delete button
-            deleteBtn.addEventListener('click', function(e) {
-                e.stopPropagation(); // Prevent conversation selection
-                deleteConversation(conversationId, conversationItem);
-            });
-
-            conversationItem.appendChild(titleSpan);
-            conversationItem.appendChild(deleteBtn);
-
-            return conversationItem;
-        }
-
-        /**
-         * Delete a conversation with confirmation
-         */
-        function deleteConversation(conversationId, conversationItem) {
-            const conversationTitle = conversationItem.querySelector('.ai-conversation-title').textContent;
-            
-            // Show confirmation dialog
-            if (!confirm(`Are you sure you want to delete "${conversationTitle}"? This will permanently delete the conversation and all its messages.`)) {
-                return;
-            }
-
-            // Call backend to delete conversation
-            Ajax.call([{
-                methodname: 'block_aiassistant_manage_conversations',
-                args: {
-                    action: 'delete',
-                    conversation_id: conversationId
-                },
-                done: function(result) {
-                    if (result.success) {
-                        console.log('Conversation deleted successfully:', conversationId);
-                        
-                        // Check if deleted conversation was the active one
-                        const wasActive = conversationItem.classList.contains('active');
-                        
-                        // Remove conversation from UI
-                        conversationItem.remove();
-                        
-                        // If this was the active conversation, create or select another one
-                        if (wasActive) {
-                            currentConversationThreadId = null;
-                            
-                            // Check if there are other conversations
-                            const remainingConversations = document.querySelectorAll('.ai-conversation-item');
-                            if (remainingConversations.length > 0) {
-                                // Select the first remaining conversation
-                                remainingConversations[0].click();
-                            } else {
-                                // No conversations left, clear the chat
-                                messagesContainer.innerHTML = '<div class="ai-message"><strong>AI Assistant:</strong> Salut ! Comment puis-je vous aider aujourd\'hui ?</div>';
-                            }
-                        }
-                    } else {
-                        console.error('Failed to delete conversation:', result.message);
-                        alert('Failed to delete conversation: ' + result.message);
-                    }
-                },
-                fail: function(error) {
-                    console.error('Failed to delete conversation:', error);
-                    alert('Failed to delete conversation. Please try again.');
-                }
-            }]);
-        }
-
-        /**
-         * Load AI configuration from backend
-         */
-        function loadAIConfiguration() {
-            Ajax.call([{
-                methodname: 'block_aiassistant_get_ai_config',
-                args: {},
-                done: function (config) {
-                    if (config && config.success) {
-                        aiConfig = config;
-                        console.log('AI Config loaded successfully.');
-                        setupProviderUI();
-                    } else {
-                        console.error('Failed to load AI configuration:', config ? config.message : 'No response received');
-                        aiConfig = {
-                            success: false,
-                            fireworks_available: false,
-                        };
-                        showConfigurationError('Failed to load AI configuration. Please check plugin settings.');
-                    }
-                },
-                fail: function (error) {
-                    console.error('Error details:', {
-                        name: error.name,
-                        message: error.message,
-                        stack: error.stack
-                    });
-                    aiConfig = {
-                        success: false,
-                        fireworks_available: false,
-                    };
-                    showConfigurationError('Could not connect to AI configuration service.');
-                }
-            }]);
-        }
-
-        /**
-         * Show configuration error in chat
-         */
-        function showConfigurationError(message) {
-            const errorDiv = document.createElement("div");
-            errorDiv.className = "ai-message";
-            errorDiv.innerHTML = `<strong>AI Assistant:</strong> <em>Error: ${message}</em>`;
-            messagesContainer.appendChild(errorDiv);
-        }
-
-        /**
-         * Setup provider UI based on configuration
-         */
-        function setupProviderUI() {
-            // Ensure aiConfig exists before proceeding
-            if (!aiConfig) {
-                console.error('AI configuration not loaded, cannot setup provider UI');
-                return;
-            }
-            
-            // Provider select is now removed, always use fireworks
-            let hasAvailableProvider = false;
-
-            // Check if provider is available
-            if (aiConfig && aiConfig.fireworks_available) {
-                hasAvailableProvider = true;
-                currentProvider = 'fireworks';
-            }
-
-            // If no providers are available, show error
-            if (!hasAvailableProvider) {
-                showConfigurationError('No AI providers are configured. Please check plugin settings.');
-                return;
-            }
-        }
-
-        /**
-         * Send a message to the AI assistant
-         */
-        function sendMessage() {
-            const message = chatInput.value.trim();
-            if (!message) {
-                return;
-            }
-
-            // Check if we have a valid configuration
-            if (!aiConfig || !aiConfig.fireworks_available) {
-                showConfigurationError('No AI providers are configured. Please check plugin settings.');
-                return;
-            }
-
-            // If no conversation is selected, create a new one
-            if (!currentConversationThreadId) {
-                createNewConversation().then(() => {
-                    // After creating conversation, send the message
-                    sendMessageWithConversation(message, currentConversationThreadId);
-                }).catch(error => {
-                    console.error('Failed to create new conversation:', error);
-                    showConfigurationError('Failed to create new conversation. Please try again.');
-                });
-                return;
-            }
-
-            sendMessageWithConversation(message, currentConversationThreadId);
-        }
-
-        /**
-         * Send message with existing conversation
-         */
-        function sendMessageWithConversation(message, currentConversationThreadId) {
-            console.log('sendMessageWithConversation called with:', {
-                message: message,
-                conversationId: currentConversationThreadId
-            });
-            
-            // Show results area and hide motto
-            showResultsArea();
-            
-            // Add user message
-            const userMessageDiv = document.createElement("div");
-            userMessageDiv.className = "user-message";
-            userMessageDiv.innerHTML = "<strong>You:</strong> " + message;
-            messagesContainer.appendChild(userMessageDiv);
-
-            // Save user message to database
-            saveMessageToDatabase(currentConversationThreadId, 'user', message);
-
-            // Clear input and reset height
-            chatInput.value = "";
-            chatInput.style.height = 'auto';
-
-            // Show loading state
-            const loadingDiv = document.createElement("div");
-            loadingDiv.className = "ai-message";
-            loadingDiv.innerHTML = `<strong>AI Assistant:</strong> <em>Getting your credentials for ${currentProvider}...</em>`;
-            messagesContainer.appendChild(loadingDiv);
-
-            // Get user credentials via AJAX
-            Ajax.call([{
-                methodname: 'block_aiassistant_get_user_credentials',
-                args: { provider: currentProvider },
-                done: function (credentials) {
-                    // Remove loading message
-                    messagesContainer.removeChild(loadingDiv);
-
-                    if (credentials.success) {
-                        sendFireworksChatMessage(message, currentConversationThreadId);
-                    } else {
-                        const errorDiv = document.createElement("div");
-                        errorDiv.className = "ai-message";
-                        errorDiv.innerHTML = "<strong>AI Assistant:</strong> <em>Error: " + credentials.message + "</em>";
-                        messagesContainer.appendChild(errorDiv);
-                    }
-                },
-                fail: function (error) {
-                    // Remove loading message
-                    if (messagesContainer.contains(loadingDiv)) {
-                        messagesContainer.removeChild(loadingDiv);
-                    }
-
-                    const errorDiv = document.createElement("div");
-                    errorDiv.className = "ai-message";
-                    errorDiv.innerHTML = "<strong>AI Assistant:</strong> <em>Failed to get credentials: " +
-                        (error.message || 'Unknown error') + "</em>";
-                    messagesContainer.appendChild(errorDiv);
-                }
-            }]);
-
-            // Scroll to bottom
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        }
-
-        /**
-         * Send chat message to Fireworks API (Direct API approach)
-         * @param {string} message - The message to send
-         */
-        async function sendFireworksChatMessage(message, currentConversationThreadId) {
-            setTimeout(async function () {
-                const aiMessageDiv = document.createElement("div");
-                aiMessageDiv.className = "ai-message";
-                aiMessageDiv.innerHTML = "<strong>AI Assistant (Fireworks):</strong> <span class='response-text'><span class='ai-thinking'><span class='ai-thinking-dot'>.</span><span class='ai-thinking-dot'>.</span><span class='ai-thinking-dot'>.</span></span></span>";
-                messagesContainer.appendChild(aiMessageDiv);
-                const responseSpan = aiMessageDiv.querySelector('.response-text');
-
-                const url = "http://localhost:8000/api/chat";
-                const options = {
-                    method: 'POST',
-
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        "message": message,
-                        "conversation_thread_id": currentConversationThreadId
-                    })
-                };
-
-                try {
-                    const response = await fetch(url, options);
-                    console.log('Fetch response status:', response.status, response.statusText);
-
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                    }
-                    // Handle Server-Sent Events (SSE) response
-                    let aiResponse = '';
-                    let retrievedDocuments = [];
-                    let documentsProcessed = false;
-                    let lastAIMessageContent = "";
-                    let videoMetadata = null; // Store video metadata for saving to database
-                    const reader = response.body.getReader();
-                    const decoder = new TextDecoder();
-
-                    while (true) {
-                        const { done, value } = await reader.read();
-                        if (done) break;
-
-                        const lines = decoder.decode(value, { stream: true }).split('\n');
-                        for (const line of lines) {
-                            if (!line.trim()) continue;
-                            try {
-                                const data = JSON.parse(line);
-                                if (data.content === '[DONE]') break;
-
-                                // Remove thinking indicator on first real content
-                                const thinkingIndicator = responseSpan.querySelector('.ai-thinking');
-                                if (thinkingIndicator) {
-                                    thinkingIndicator.remove();
-                                }
-
-                                // Handle video metadata event (process once when available)
-                                if (data.event === 'video_metadata' && data.data) {
-                                    videoMetadata = data.data; // Store for database
-                                    displayVideoSegment(data.data);
-                                }
-
-                                // Handle documents (process once when available)
-                                // Note: We hide document sources when we have video metadata to avoid clutter
-                                if (data.documents && Array.isArray(data.documents) && data.documents.length > 0 && !documentsProcessed) {
-                                    const document_sources = data.documents.map(doc => {
-                                        return doc.metadata?.source || 'Unknown source';
-                                    });
-                                    // Only show documents if no video was received
-                                    // Comment out the next line if you want to hide text document sources entirely
-                                    // showDocuments(document_sources);
-                                    retrievedDocuments = document_sources;
-                                    documentsProcessed = true;
-                                }
-
-                                // Handle content from stream_mode="values" (array of messages)
-                                if (data.content && Array.isArray(data.content)) {
-                                    // Find the latest AI message in the messages array
-                                    for (const msg of data.content) {
-                                        // Check for AIMessage type and extract content
-                                        if (msg.content && (msg.type === 'ai' || msg.__class__ === 'AIMessage' || typeof msg.content === 'string')) {
-                                            const currentAIContent = msg.content;
-                                            // Only update if the AI message content has changed
-                                            if (currentAIContent !== lastAIMessageContent) {
-                                                aiResponse = currentAIContent; // Replace with latest complete AI message
-                                                responseSpan.textContent = aiResponse;
-                                                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-
-                                                // Convert markdown to HTML if marked is available
-                                                if (typeof marked !== 'undefined' && marked.parse) {
-                                                    const html_content = marked.parse(responseSpan.textContent);
-                                                    responseSpan.innerHTML = html_content;
-                                                }
-
-                                                lastAIMessageContent = currentAIContent;
-                                            }
-                                        }
-                                    }
-                                }
-                                // Fallback for stream_mode="messages" (direct string content)
-                                else if (data.content && typeof data.content === 'string') {
-                                    aiResponse += data.content;
-                                    responseSpan.textContent = aiResponse;
-                                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-
-                                    if (typeof marked !== 'undefined' && marked.parse) {
-                                        const htmlContent = marked.parse(responseSpan.textContent);
-                                        responseSpan.innerHTML = htmlContent;
-                                    }
-                                }
-
-                                if (data.error) throw new Error(data.error);
-                            } catch (e) {
-                                console.error('Parse error:', e);
-                            }
-                        }
-                    }
-                    // Save AI response to database if we have content
-                    if (aiResponse && aiResponse.trim()) {
-                        console.log('Attempting to save AI response:', {
-                            conversationId: currentConversationThreadId,
-                            responseLength: aiResponse.length,
-                            responsePreview: aiResponse.substring(0, 100) + '...',
-                            hasVideoMetadata: !!videoMetadata
-                        });
-                        // Store video metadata as JSON string if available
-                        const metadataStr = videoMetadata ? JSON.stringify(videoMetadata) : '';
-                        saveMessageToDatabase(currentConversationThreadId, 'ai', aiResponse, metadataStr);
-                    } else {
-                        console.log('No AI response to save:', {
-                            aiResponse: aiResponse,
-                            conversationId: currentConversationThreadId
-                        });
-                    }
-
-                } catch (error) {
-                    console.error('FastAPI call failed:', error);
-                    responseSpan.textContent = 'Sorry, there was an error processing your request: ' + error.message;
-                }
-
-                
-
-                // Final scroll to bottom
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            }, 1000);
-        }
-
-        /**
-         * Generate a UUID for new conversations
-         */
-        function generateUUID() {
-            if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-                return crypto.randomUUID();
-            }
-            // Fallback UUID generation for older browsers
-            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-                const r = Math.random() * 16 | 0;
-                const v = c === 'x' ? r : (r & 0x3 | 0x8);
-                return v.toString(16);
-            });
-        }
-
-        /**
-         * Create a new conversation
-         */
-        async function createNewConversation() {
-            const conversationId = generateUUID();
-            const conversationTitle = `New Conversation ${new Date().toLocaleTimeString()}`;
-
-            // Create new conversation DOM element using helper function
-            const conversationList = document.getElementById('ai-conversation-list');
-            const newConversationItem = createConversationElement(conversationId, conversationTitle);
-            conversationList.appendChild(newConversationItem);
-
-            // Remove active class from all items and set this one as active
-            const allItems = document.querySelectorAll('.ai-conversation-item');
-            allItems.forEach(item => item.classList.remove('active'));
-            newConversationItem.classList.add('active');
-
-            // Set as current conversation
-            currentConversationThreadId = conversationId;
-
-            // Clear chat messages, video player, and hide results area
-            messagesContainer.innerHTML = '';
-            clearVideoPlayer();
-            hideResultsArea();
-
-            // Add click listener to the new item
-            setupConversationItemListener(newConversationItem);
-
-            // Create conversation in Moodle database
-            try {
-                await createConversationInMoodle(conversationId, conversationTitle);
-                console.log('New conversation created:', conversationId);
-            } catch (error) {
-                console.error('Failed to create conversation in Moodle:', error);
-                const errorDiv = document.createElement("div");
-                errorDiv.className = "ai-message";
-                errorDiv.innerHTML = `<strong>AI Assistant:</strong> <em>Warning: Could not save conversation. Messages may not be saved.</em>`;
-                messagesContainer.appendChild(errorDiv);
-            }
-        }
-
-        /**
-         * Save a message to the database
-         */
-        function saveMessageToDatabase(conversationId, messageType, content, metadata = '') {
-            console.log('saveMessageToDatabase called with:', {
-                conversationId: conversationId,
-                messageType: messageType,
-                content: content.substring(0, 100) + (content.length > 100 ? '...' : ''),
-                metadata: metadata
-            });
-            
-            Ajax.call([{
-                methodname: 'block_aiassistant_manage_messages',
-                args: {
-                    action: 'save',
-                    conversation_id: conversationId,
-                    message_type: messageType,
-                    content: content,
-                    metadata: metadata
-                },
-                done: function (result) {
-                    console.log('AJAX response received:', result);
-                    if (result.success) {
-                        console.log(`Message saved successfully: ${messageType} message with ID ${result.message_id}`);
-                    } else {
-                        console.error('Failed to save message:', result.message);
-                    }
-                },
-                fail: function (error) {
-                    console.error('Failed to save message to database:', error);
-                    console.error('Error details:', {
-                        name: error.name,
-                        message: error.message,
-                        stack: error.stack
-                    });
-                }
-            }]);
-        }
-
-        /**
-         * Load messages for a conversation from database
-         */
-        function loadMessagesFromDatabase(conversationId) {
-            return new Promise((resolve, reject) => {
-                Ajax.call([{
-                    methodname: 'block_aiassistant_manage_messages',
-                    args: {
-                        action: 'load',
-                        conversation_id: conversationId
-                    },
-                    done: function (result) {
-                        if (result.success) {
-                            console.log(`Loaded ${result.messages.length} messages for conversation ${conversationId}`);
-                            resolve(result.messages);
-                        } else {
-                            console.error('Failed to load messages:', result.message);
-                            reject(new Error(result.message));
-                        }
-                    },
-                    fail: function (error) {
-                        console.error('Failed to load messages from database:', error);
-                        reject(error);
-                    }
-                }]);
-            });
-        }
-
-        /**
-         * Create conversation in Moodle database via Ajax
-         */
-        async function createConversationInMoodle(conversationId, conversationTitle) {
-            return new Promise((resolve, reject) => {
-                Ajax.call([{
-                    methodname: 'block_aiassistant_manage_conversations',
-                    args: {
-                        action: 'create',
-                        conversation_id: conversationId,
-                        title: conversationTitle
-                    },
-                    done: function (result) {
-                        if (result.success) {
-                            resolve(result);
-                        } else {
-                            reject(new Error(result.message || 'Failed to create conversation'));
-                        }
-                    },
-                    fail: function (error) {
-                        reject(error);
-                    }
-                }]);
-            });
-        }
-
-        /**
-         * Display messages in the chat interface
-         */
-        function displayMessages(messages) {
-            messagesContainer.innerHTML = '';
-
-            if (messages.length === 0) {
-                hideResultsArea();
-                return;
-            }
-
-            // Show results area if there are messages
-            showResultsArea();
-
-            messages.forEach(message => {
-                const messageDiv = document.createElement('div');
-                
-                if (message.message_type === 'user') {
-                    messageDiv.className = 'user-message';
-                    messageDiv.innerHTML = '<strong>You:</strong> ' + message.content;
-                } else if (message.message_type === 'ai') {
-                    messageDiv.className = 'ai-message';
-                    messageDiv.innerHTML = '<strong>AI Assistant:</strong> <span class="response-text">' + message.content + '</span>';
-                    
-                    // Apply markdown rendering if available
-                    const responseSpan = messageDiv.querySelector('.response-text');
-                    if (typeof marked !== 'undefined' && marked.parse) {
-                        responseSpan.innerHTML = marked.parse(message.content);
-                    }
-                    
-                    // Check if message has video metadata and display video
-                    if (message.metadata && message.metadata.trim()) {
-                        try {
-                            const videoMetadata = JSON.parse(message.metadata);
-                            if (videoMetadata.video_url) {
-                                console.log('Restoring video from metadata:', videoMetadata);
-                                displayVideoSegment(videoMetadata);
-                            }
-                        } catch (e) {
-                            console.warn('Failed to parse message metadata as JSON:', e);
-                        }
-                    }
-                }
-                
-                messagesContainer.appendChild(messageDiv);
-            });
-
-            // Scroll to bottom
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        }
-
-        /**
-         * Setup event listener for a single conversation item
-         */
-        function setupConversationItemListener(item) {
-            item.addEventListener('click', function (e) {
-                // Don't trigger if clicking on delete button
-                if (e.target.classList.contains('ai-conversation-delete-btn')) {
-                    return;
-                }
-                
-                // Remove active class from all items
-                const allItems = document.querySelectorAll('.ai-conversation-item');
-                allItems.forEach(i => i.classList.remove('active'));
-
-                // Add active class to clicked item
-                this.classList.add('active');
-
-                // Get conversation data
-                const conversationId = this.getAttribute('data-conversation-id');
-                const conversationTitle = this.querySelector('.ai-conversation-title').textContent;
-
-                // Set as current conversation
-                currentConversationThreadId = conversationId;
-
-                console.log('Conversation selected:', {
-                    id: conversationId,
-                    title: conversationTitle
-                });
-
-                // Clear messages, video player, and show loading state
-                messagesContainer.innerHTML = '<div class="ai-message"><strong>AI Assistant:</strong> <em>Loading conversation...</em></div>';
-                clearVideoPlayer();
-
-                // Load messages from database
-                loadMessagesFromDatabase(conversationId)
-                    .then(messages => {
-                        displayMessages(messages);
-                    })
-                    .catch(error => {
-                        console.error('Failed to load messages:', error);
-                        showResultsArea();
-                        messagesContainer.innerHTML = '<div class="ai-message"><strong>AI Assistant:</strong> <em>Failed to load conversation. Please try again.</em></div>';
-                    });
-            });
-        }
-
-        // Setup conversation panel event listeners
-        setupConversationPanel();
-
-        // Add event listeners
-        newConversationBtn.addEventListener('click', createNewConversation);
-        sendButton.addEventListener("click", sendMessage);
-        
-        // Toggle conversations panel
-        if (conversationsToggle && conversationsPanel) {
-            conversationsToggle.addEventListener('click', function() {
-                conversationsPanel.classList.toggle('open');
-                conversationsToggle.classList.toggle('active');
-            });
-        }
-
-        /**
-         * Setup conversation panel functionality
-         */
-        function setupConversationPanel() {
-            const conversationItems = document.querySelectorAll('.ai-conversation-item');
-
-            conversationItems.forEach(item => {
-                setupConversationItemListener(item);
-            });
-        }
-        // Auto-resize textarea as user types
-        function autoResizeTextarea() {
-            chatInput.style.height = 'auto'; // Reset height to recalculate
-            const lineHeight = 24; // Line height in pixels
-            const maxLines = 4;
-            const maxHeight = lineHeight * maxLines;
-            const newHeight = Math.min(chatInput.scrollHeight, maxHeight);
-            chatInput.style.height = newHeight + 'px';
-        }
-
-        // Add input event listener for auto-resize
-        chatInput.addEventListener('input', autoResizeTextarea);
-
-        chatInput.addEventListener("keypress", function (e) {
-            if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
-            }
-        });
-    };
-
-    // Try to initialize immediately if DOM is ready, otherwise wait for DOMContentLoaded
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initializeChat);
+        document.addEventListener('DOMContentLoaded', setup);
     } else {
-        // DOM is already loaded, initialize immediately
-        initializeChat();
+        setup();
     }
 };
+
+/* ============================================================
+   SETUP
+   ============================================================ */
+const setup = () => {
+    if (!initDOM()) return;
+    bindEvents();
+    loadConversations();
+};
+
+const initDOM = () => {
+    const map = {
+        toggle:        'cp-toggle',
+        wrapper:       'cp-wrapper',
+        chatBody:      'cp-chat-body',
+        sidebar:       'cp-sidebar',
+        sidebarToggle: 'cp-sidebar-toggle',
+        newConv:       'cp-new-conv',
+        convList:      'cp-conv-list',
+        panel:         'cp-panel',
+        convTitle:     'cp-conv-title',
+        closeBtn:      'cp-close',
+        messages:      'cp-messages',
+        sources:       'cp-sources',
+        sourcesHeader: 'cp-sources-header',
+        sourcesCount:  'cp-sources-count',
+        sourcesScroll: 'cp-sources-scroll',
+        input:         'cp-input',
+        sendBtn:       'cp-send',
+    };
+
+    let ok = true;
+    const required = new Set(['toggle', 'wrapper', 'messages', 'input', 'sendBtn']);
+
+    Object.entries(map).forEach(([key, id]) => {
+        dom[key] = document.getElementById(id);
+        if (!dom[key] && required.has(key)) {
+            console.error('CraftPilot: missing required element #' + id);
+            ok = false;
+        }
+    });
+    return ok;
+};
+
+/* ============================================================
+   EVENT BINDING
+   ============================================================ */
+const bindEvents = () => {
+    dom.toggle.addEventListener('click', toggleChat);
+    dom.toggle.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleChat(); }
+    });
+
+    dom.closeBtn?.addEventListener('click', () => setChat(false));
+    dom.sidebarToggle?.addEventListener('click', toggleSidebar);
+    dom.newConv?.addEventListener('click', startNewConversation);
+
+    dom.sendBtn.addEventListener('click', sendMessage);
+    dom.input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    });
+    dom.input.addEventListener('input', autoResize);
+
+    dom.sourcesHeader?.addEventListener('click', toggleSources);
+};
+
+/* ============================================================
+   CHAT OPEN / CLOSE
+   ============================================================ */
+const setChat = (open) => {
+    state.chatOpen = open;
+    dom.wrapper.classList.toggle('cp-wrapper--open', open);
+    dom.chatBody?.setAttribute('aria-hidden', String(!open));
+    dom.toggle.setAttribute('aria-expanded', String(open));
+    dom.toggle.classList.toggle('cp-toggle-pill--active', open);
+    if (open) setTimeout(() => dom.input?.focus(), 50);
+};
+
+const toggleChat = () => setChat(!state.chatOpen);
+
+/* ============================================================
+   SIDEBAR
+   ============================================================ */
+const toggleSidebar = () => {
+    state.sidebarOpen = !state.sidebarOpen;
+    dom.sidebar?.classList.toggle('cp-sidebar--open', state.sidebarOpen);
+    dom.wrapper?.classList.toggle('cp-wrapper--sidebar-open', state.sidebarOpen);
+};
+
+/* ============================================================
+   SOURCES SECTION
+   ============================================================ */
+const toggleSources = () => {
+    const open = dom.sources.classList.toggle('cp-sources--open');
+    dom.sourcesHeader?.setAttribute('aria-expanded', String(open));
+};
+
+const setSources = (items) => {
+    state.sources = items;
+    if (!dom.sources || !dom.sourcesScroll) return;
+
+    if (!items.length) {
+        dom.sources.classList.remove('cp-sources--visible', 'cp-sources--open');
+        return;
+    }
+
+    dom.sources.classList.add('cp-sources--visible', 'cp-sources--open');
+    dom.sourcesHeader?.setAttribute('aria-expanded', 'true');
+    if (dom.sourcesCount) dom.sourcesCount.textContent = items.length;
+
+    dom.sourcesScroll.innerHTML = '';
+    items.forEach(item => dom.sourcesScroll.appendChild(buildSourceCard(item)));
+};
+
+const addSource = (item) => {
+    /* deduplicate by id */
+    if (!state.sources.some(s => s.id === item.id)) {
+        state.sources.push(item);
+        setSources(state.sources);
+    }
+};
+
+const clearSources = () => setSources([]);
+
+/* ============================================================
+   SOURCE CARDS
+   ============================================================ */
+const buildSourceCard = (item) => {
+    const card = document.createElement('div');
+    card.className = 'cp-source-card cp-card--' + item.type;
+    card.setAttribute('role', 'listitem');
+    card.setAttribute('tabindex', '0');
+    card.setAttribute('aria-label', (item.filename || item.type) + ' — click to open');
+
+    if (item.type === 'video') {
+        card.innerHTML =
+            '<div class="cp-card-thumb">' +
+                '<div class="cp-card-play">' +
+                    '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">' +
+                        '<path d="M8 5v14l11-7z"/>' +
+                    '</svg>' +
+                '</div>' +
+            '</div>' +
+            '<div class="cp-card-footer">' +
+                '<span class="cp-card-badge">Video</span>' +
+                '<span class="cp-card-name">' + escapeHtml(item.filename || 'Video clip') + '</span>' +
+            '</div>';
+        card.addEventListener('click', () => openVideoModal(item));
+
+    } else if (item.type === 'bvh') {
+        card.innerHTML =
+            '<div class="cp-card-thumb">' +
+                '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">' +
+                    '<circle cx="12" cy="3.5" r="1.5"/>' +
+                    '<line x1="12" y1="5"  x2="12" y2="11"/>' +
+                    '<line x1="12" y1="8"  x2="8"  y2="6"/>' +
+                    '<line x1="12" y1="8"  x2="16" y2="6"/>' +
+                    '<line x1="12" y1="11" x2="10" y2="17"/>' +
+                    '<line x1="12" y1="11" x2="14" y2="17"/>' +
+                    '<line x1="10" y1="17" x2="9.5" y2="21"/>' +
+                    '<line x1="14" y1="17" x2="14.5" y2="21"/>' +
+                '</svg>' +
+            '</div>' +
+            '<div class="cp-card-footer">' +
+                '<span class="cp-card-badge">Motion</span>' +
+                '<span class="cp-card-name">' + escapeHtml(item.filename || 'Motion data') + '</span>' +
+            '</div>';
+        card.addEventListener('click', () => openBVHModal(item));
+
+    } else if (item.type === 'text') {
+        const preview = escapeHtml((item.content || '').substring(0, 200));
+        card.innerHTML =
+            '<div class="cp-card-thumb">' +
+                '<div class="cp-text-preview-wrap">' +
+                    '<div class="cp-text-blur-top"></div>' +
+                    '<span class="cp-text-highlight">' + preview + '</span>' +
+                    '<div class="cp-text-blur-bottom"></div>' +
+                '</div>' +
+            '</div>' +
+            '<div class="cp-card-footer">' +
+                '<span class="cp-card-badge">Text</span>' +
+                '<span class="cp-card-name">' + escapeHtml(item.source || 'Document') + '</span>' +
+            '</div>';
+        card.addEventListener('click', () => openTextModal(item));
+    }
+
+    card.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); card.click(); } });
+    return card;
+};
+
+/* ============================================================
+   VIDEO MODAL
+   ============================================================ */
+const openVideoModal = (item) => {
+    const rawUrl = item.video_url || item.url || '';
+    const backendBase = state.chatProxyUrl ? state.chatProxyUrl.replace('/mod/craftpilot/chat_proxy.php', '') : '';
+    const videoUrl = rawUrl.startsWith('http') ? rawUrl : backendBase + rawUrl;
+    const startMs  = item.start_time != null ? item.start_time : null;
+    const endMs    = item.end_time   != null ? item.end_time   : null;
+
+    const {overlay, modal, closeModal} = createModal();
+
+    modal.innerHTML =
+        '<div class="cp-modal-header">' +
+            '<h2 class="cp-modal-title">' + escapeHtml(item.filename || item.project_name || 'Video') + '</h2>' +
+            '<button class="cp-icon-btn cp-modal-close" aria-label="Close">' +
+                svgClose() +
+            '</button>' +
+        '</div>' +
+        '<div class="cp-modal-body">' +
+            '<video class="cp-video-player" controls preload="metadata">' +
+                '<source src="' + videoUrl + '" type="video/mp4">' +
+                'Your browser does not support the video element.' +
+            '</video>' +
+            (startMs !== null
+                ? '<p style="margin:12px 0 0;font-size:13px;color:#767676;font-family:var(--cp-font-body)">' +
+                      'Segment: ' + formatTime(startMs) + ' — ' + formatTime(endMs || 0) +
+                  '</p>'
+                : '') +
+        '</div>';
+
+    modal.querySelector('.cp-modal-close').addEventListener('click', closeModal);
+
+    const video = modal.querySelector('video');
+    if (startMs !== null) {
+        video.addEventListener('loadedmetadata', () => { video.currentTime = startMs; });
+    }
+
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('cp-modal-overlay--visible'));
+};
+
+/* ============================================================
+   BVH MODAL  (Three.js skeleton viewer)
+   ============================================================ */
+const openBVHModal = (item) => {
+    const rawUrl = item.bvh_url || item.url || '';
+    const backendBase = state.chatProxyUrl ? state.chatProxyUrl.replace('/mod/craftpilot/chat_proxy.php', '') : '';
+    const bvhUrl = rawUrl.startsWith('http') ? rawUrl : backendBase + rawUrl;
+    const canvasId = 'cp-bvh-canvas-' + Date.now();
+
+    const {overlay, modal, closeModal} = createModal();
+
+    modal.innerHTML =
+        '<div class="cp-modal-header">' +
+            '<h2 class="cp-modal-title">' + escapeHtml(item.filename || 'Motion Capture') + '</h2>' +
+            '<button class="cp-icon-btn cp-modal-close" aria-label="Close">' +
+                svgClose() +
+            '</button>' +
+        '</div>' +
+        '<div class="cp-modal-body">' +
+            '<div class="cp-bvh-canvas-wrap" id="' + canvasId + '">' +
+                '<div class="cp-bvh-loading">' +
+                    '<div class="cp-spinner"></div>' +
+                    '<span>Loading motion data\u2026</span>' +
+                '</div>' +
+            '</div>' +
+            '<div class="cp-bvh-controls">' +
+                '<button class="cp-bvh-play" id="cp-bvh-play-btn" aria-label="Play / Pause">' +
+                    svgPlay() +
+                '</button>' +
+                '<input type="range" class="cp-bvh-scrubber" min="0" max="1000" value="0" step="1" aria-label="Playback position">' +
+                '<select class="cp-bvh-speed" aria-label="Playback speed">' +
+                    '<option value="0.25">0.25\u00d7</option>' +
+                    '<option value="0.5">0.5\u00d7</option>' +
+                    '<option value="1" selected>1\u00d7</option>' +
+                    '<option value="2">2\u00d7</option>' +
+                '</select>' +
+            '</div>' +
+        '</div>';
+
+    const doClose = () => {
+        const v = window._cpBvhViewer;
+        if (v) { v.destroy(); window._cpBvhViewer = null; }
+        closeModal();
+    };
+
+    modal.querySelector('.cp-modal-close').addEventListener('click', doClose);
+
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('cp-modal-overlay--visible'));
+
+    /* Bootstrap Three.js viewer after DOM mount */
+    const container = document.getElementById(canvasId);
+    const playBtn   = modal.querySelector('#cp-bvh-play-btn');
+    const scrubber  = modal.querySelector('.cp-bvh-scrubber');
+    const speedSel  = modal.querySelector('.cp-bvh-speed');
+
+    loadThreeJS()
+        .then(() => {
+            const viewer = new BVHViewer(container, bvhUrl);
+            window._cpBvhViewer = viewer;
+            return viewer.init();
+        })
+        .then(() => {
+            const viewer = window._cpBvhViewer;
+
+            playBtn.addEventListener('click', () => {
+                viewer.togglePlay();
+                playBtn.innerHTML = viewer.playing ? svgPause() : svgPlay();
+            });
+
+            viewer.onProgress = (p) => {
+                scrubber.value = Math.round(p * 1000);
+            };
+
+            scrubber.addEventListener('input', (e) => {
+                viewer.seekTo(parseInt(e.target.value, 10) / 1000);
+            });
+
+            speedSel.addEventListener('change', (e) => {
+                viewer.speed = parseFloat(e.target.value);
+            });
+        })
+        .catch((err) => {
+            container.innerHTML =
+                '<div class="cp-bvh-loading">' +
+                    '<p style="color:#dc2626;font-family:var(--cp-font-body);font-size:13px">' +
+                        'Could not load BVH: ' + escapeHtml(err.message) +
+                    '</p>' +
+                '</div>';
+        });
+};
+
+/* ============================================================
+   TEXT MODAL  (paragraph context viewer)
+   ============================================================ */
+const openTextModal = (item) => {
+    const {overlay, modal, closeModal} = createModal();
+
+    modal.innerHTML =
+        '<div class="cp-modal-header">' +
+            '<h2 class="cp-modal-title">' + escapeHtml(item.source || 'Document') + '</h2>' +
+            '<button class="cp-icon-btn cp-modal-close" aria-label="Close">' +
+                svgClose() +
+            '</button>' +
+        '</div>' +
+        '<div class="cp-text-modal-body">' +
+            '<p>' + escapeHtml(item.content || '') + '</p>' +
+        '</div>';
+
+    modal.querySelector('.cp-modal-close').addEventListener('click', closeModal);
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('cp-modal-overlay--visible'));
+};
+
+/* ============================================================
+   MODAL UTILITIES
+   ============================================================ */
+const createModal = () => {
+    const overlay = document.createElement('div');
+    overlay.className = 'cp-modal-overlay';
+
+    const modal = document.createElement('div');
+    modal.className = 'cp-modal';
+    overlay.appendChild(modal);
+
+    const closeModal = () => {
+        overlay.classList.remove('cp-modal-overlay--visible');
+        setTimeout(() => { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 320);
+    };
+
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
+
+    const onEsc = (e) => {
+        if (e.key === 'Escape') { closeModal(); document.removeEventListener('keydown', onEsc); }
+    };
+    document.addEventListener('keydown', onEsc);
+
+    return {overlay, modal, closeModal};
+};
+
+/* ============================================================
+   LAZY-LOAD THREE.JS
+   ============================================================ */
+const loadThreeJS = () => new Promise((resolve, reject) => {
+    if (window.THREE) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js';
+    s.onload  = resolve;
+    s.onerror = () => reject(new Error('Failed to load Three.js'));
+    document.head.appendChild(s);
+});
+
+/* ============================================================
+   BVH VIEWER  (Three.js WebGL skeleton animator)
+   ============================================================ */
+class BVHViewer {
+    constructor(container, url) {
+        this.container   = container;
+        this.url         = url;
+        this.playing     = false;
+        this.speed       = 1;
+        this.frameIndex  = 0;
+        this.frames      = [];
+        this.frameTime   = 1 / 30;
+        this.elapsed     = 0;
+        this.lastTs      = 0;
+        this.animFrame   = null;
+        this.onProgress  = null;
+
+        this._scene      = null;
+        this._camera     = null;
+        this._renderer   = null;
+        this._root       = null;
+        this._bonePairs  = [];
+        this._bonePos    = null;
+        this._boneLines  = null;
+        this._spheres    = [];
+    }
+
+    async init() {
+        const THREE = window.THREE;
+        const w = Math.max(this.container.clientWidth  || 520, 100);
+        const h = 320;
+
+        /* Scene */
+        this._scene = new THREE.Scene();
+        this._scene.background = new THREE.Color(0xfafafa);
+
+        /* Camera */
+        this._camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 50000);
+
+        /* Renderer */
+        this._renderer = new THREE.WebGLRenderer({ antialias: true });
+        this._renderer.setSize(w, h);
+        this._renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+
+        /* Replace loading indicator */
+        this.container.innerHTML = '';
+        this.container.appendChild(this._renderer.domElement);
+
+        /* Floor grid */
+        const grid = new THREE.GridHelper(1200, 30, 0xe8e8e8, 0xededed);
+        this._scene.add(grid);
+
+        /* Ambient light */
+        this._scene.add(new THREE.AmbientLight(0xffffff, 1));
+
+        /* Load BVH */
+        const res = await fetch(this.url);
+        if (!res.ok) throw new Error('HTTP ' + res.status + ' fetching BVH');
+        const text = await res.text();
+        const parsed = parseBVH(text);
+
+        this._root     = parsed.root;
+        this.frames    = parsed.frames;
+        this.frameTime = parsed.frameTime;
+
+        /* Apply frame 0 for T-pose */
+        if (this.frames.length > 0) {
+            applyFrame(this._root, this.frames[0]);
+        }
+
+        /* Build skeleton geometry */
+        this._buildGeometry();
+        this._updateGeometry();
+
+        /* Auto-fit camera */
+        this._autofitCamera();
+
+        /* Start render loop */
+        this._animate(0);
+    }
+
+    _buildGeometry() {
+        const THREE = window.THREE;
+
+        /* Collect (parent, child) joint pairs */
+        const collect = (joint) => {
+            joint.children.forEach(child => {
+                this._bonePairs.push([joint, child]);
+                if (!child.isEndSite) collect(child);
+            });
+        };
+        collect(this._root);
+
+        const n = this._bonePairs.length;
+        this._bonePos = new Float32Array(n * 6);
+
+        const geo = new THREE.BufferGeometry();
+        const attr = new THREE.BufferAttribute(this._bonePos, 3);
+        attr.setUsage(THREE.DynamicDrawUsage);
+        geo.setAttribute('position', attr);
+        geo.setDrawRange(0, n * 2);
+
+        const mat = new THREE.LineBasicMaterial({ color: 0x0f6cbf, linewidth: 2 });
+        this._boneLines = new THREE.LineSegments(geo, mat);
+        this._scene.add(this._boneLines);
+
+        /* Joint spheres */
+        const sGeo = new THREE.SphereGeometry(3, 6, 6);
+        const sMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+
+        const addSpheres = (joint) => {
+            if (!joint.isEndSite) {
+                const mesh = new THREE.Mesh(sGeo, sMat);
+                this._scene.add(mesh);
+                this._spheres.push({ joint, mesh });
+                joint.children.forEach(c => addSpheres(c));
+            }
+        };
+        addSpheres(this._root);
+    }
+
+    _updateGeometry() {
+        let i = 0;
+        this._bonePairs.forEach(([parent, child]) => {
+            const pp = parent._worldPos;
+            const cp = child._worldPos || pp;
+            this._bonePos[i++] = pp.x;
+            this._bonePos[i++] = pp.y;
+            this._bonePos[i++] = pp.z;
+            this._bonePos[i++] = cp.x;
+            this._bonePos[i++] = cp.y;
+            this._bonePos[i++] = cp.z;
+        });
+        this._boneLines.geometry.attributes.position.needsUpdate = true;
+
+        this._spheres.forEach(({ joint, mesh }) => {
+            if (joint._worldPos) mesh.position.copy(joint._worldPos);
+        });
+    }
+
+    _autofitCamera() {
+        const THREE = window.THREE;
+        const box = new THREE.Box3();
+        this._spheres.forEach(({ joint }) => {
+            if (joint._worldPos) box.expandByPoint(joint._worldPos);
+        });
+
+        const center = new THREE.Vector3();
+        const size   = new THREE.Vector3();
+        box.getCenter(center);
+        box.getSize(size);
+
+        const maxDim = Math.max(size.x, size.y, size.z, 1);
+        const dist   = maxDim * 2.0;
+
+        this._camera.position.set(center.x, center.y + size.y * 0.05, center.z + dist);
+        this._camera.lookAt(center);
+        this._camera.far = dist * 12;
+        this._camera.updateProjectionMatrix();
+    }
+
+    _animate(ts) {
+        this.animFrame = requestAnimationFrame((t) => this._animate(t));
+
+        if (this.playing && this.frames.length > 0) {
+            const delta = (ts - this.lastTs) / 1000;
+            this.elapsed += delta * this.speed;
+
+            const total = this.frames.length * this.frameTime;
+            if (this.elapsed >= total) this.elapsed = this.elapsed % total;
+
+            this.frameIndex = Math.min(
+                Math.floor(this.elapsed / this.frameTime),
+                this.frames.length - 1
+            );
+
+            applyFrame(this._root, this.frames[this.frameIndex]);
+            this._updateGeometry();
+
+            if (this.onProgress) this.onProgress(this.elapsed / total);
+        }
+
+        this.lastTs = ts;
+        this._renderer.render(this._scene, this._camera);
+    }
+
+    togglePlay() { this.playing = !this.playing; }
+
+    seekTo(progress) {
+        const total = this.frames.length * this.frameTime;
+        this.elapsed    = progress * total;
+        this.frameIndex = Math.min(
+            Math.floor(this.elapsed / this.frameTime),
+            this.frames.length - 1
+        );
+        applyFrame(this._root, this.frames[this.frameIndex]);
+        this._updateGeometry();
+        if (this._renderer) this._renderer.render(this._scene, this._camera);
+    }
+
+    destroy() {
+        if (this.animFrame) {
+            cancelAnimationFrame(this.animFrame);
+            this.animFrame = null;
+        }
+        if (this._renderer) {
+            this._renderer.dispose();
+            this._renderer = null;
+        }
+        if (this._boneLines) {
+            this._boneLines.geometry.dispose();
+            this._boneLines.material.dispose();
+        }
+    }
+}
+
+/* ============================================================
+   BVH PARSER
+   Produces: { root, joints[], frames[][], frameTime }
+   ============================================================ */
+const parseBVH = (text) => {
+    const lines  = text.split(/\r?\n/);
+    let cursor   = 0;
+
+    const read = () => {
+        while (cursor < lines.length) {
+            const l = lines[cursor++].trim();
+            if (l) return l;
+        }
+        return null;
+    };
+
+    /* Advance to HIERARCHY */
+    let line;
+    while ((line = read()) && line !== 'HIERARCHY') { /* skip */ }
+
+    /* All named joints (not end-sites) */
+    const allJoints = [];
+
+    const parseJoint = (parent) => {
+        const decl  = read();                          /* e.g. "ROOT Hips" or "End Site" */
+        const parts = decl.split(/\s+/);
+        const isEnd = parts[0] === 'End';
+        const name  = isEnd ? ((parent ? parent.name : '') + '_end') : parts[1];
+
+        const joint = {
+            name,
+            parent,
+            offset:    [0, 0, 0],
+            channels:  [],
+            children:  [],
+            isEndSite: isEnd,
+            _worldPos: null,
+        };
+
+        if (!isEnd) allJoints.push(joint);
+
+        read(); /* opening { */
+
+        let l;
+        while ((l = read()) !== '}') {
+            const p = l.split(/\s+/);
+            if (p[0] === 'OFFSET') {
+                joint.offset = [parseFloat(p[1]), parseFloat(p[2]), parseFloat(p[3])];
+            } else if (p[0] === 'CHANNELS') {
+                const n = parseInt(p[1], 10);
+                for (let i = 0; i < n; i++) joint.channels.push(p[2 + i]);
+            } else if (p[0] === 'JOINT') {
+                cursor--;                               /* put declaration back */
+                const child = parseJoint(joint);
+                joint.children.push(child);
+            } else if (p[0] === 'End') {
+                cursor--;                               /* put declaration back */
+                const endSite = parseJoint(joint);
+                joint.children.push(endSite);
+            }
+        }
+        return joint;
+    };
+
+    const root = parseJoint(null);
+
+    /* Advance to MOTION */
+    while ((line = read()) && line !== 'MOTION') { /* skip */ }
+
+    const framesLine = read();
+    const numFrames  = parseInt((framesLine || '').replace(/[^0-9]/g, ''), 10) || 0;
+
+    const ftLine    = read();
+    const ftParts   = (ftLine || '').split(':');
+    const frameTime = parseFloat(ftParts[1] != null ? ftParts[1] : ftParts[0]) || (1 / 30);
+
+    const frames = [];
+    for (let i = 0; i < numFrames; i++) {
+        const fl = read();
+        if (!fl) break;
+        frames.push(fl.trim().split(/\s+/).map(parseFloat));
+    }
+
+    return { root, joints: allJoints, frames, frameTime };
+};
+
+/* ============================================================
+   BVH FORWARD KINEMATICS
+   Traverses the joint tree, builds world positions for each joint.
+   ============================================================ */
+const DEG2RAD = Math.PI / 180;
+
+const applyFrame = (root, frame) => {
+    if (!frame || !window.THREE) return;
+    const THREE = window.THREE;
+    const ref   = { idx: 0 };
+
+    const traverse = (joint, parentMat) => {
+        let tx = joint.offset[0];
+        let ty = joint.offset[1];
+        let tz = joint.offset[2];
+        let rx = 0, ry = 0, rz = 0;
+        const rotAxes = [];
+
+        if (!joint.isEndSite) {
+            joint.channels.forEach((ch) => {
+                const val = (frame[ref.idx] !== undefined ? frame[ref.idx] : 0);
+                ref.idx++;
+                switch (ch) {
+                    case 'Xposition': tx += val; break;
+                    case 'Yposition': ty += val; break;
+                    case 'Zposition': tz += val; break;
+                    case 'Xrotation': rx = val * DEG2RAD; rotAxes.push('X'); break;
+                    case 'Yrotation': ry = val * DEG2RAD; rotAxes.push('Y'); break;
+                    case 'Zrotation': rz = val * DEG2RAD; rotAxes.push('Z'); break;
+                }
+            });
+        }
+
+        const order     = rotAxes.join('') || 'ZXY';
+        const T         = new THREE.Matrix4().makeTranslation(tx, ty, tz);
+        const R         = new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(rx, ry, rz, order));
+        const localMat  = new THREE.Matrix4().multiplyMatrices(T, R);
+        const worldMat  = parentMat
+            ? new THREE.Matrix4().multiplyMatrices(parentMat, localMat)
+            : localMat.clone();
+
+        joint._worldPos = new THREE.Vector3().setFromMatrixPosition(worldMat);
+        joint.children.forEach(c => traverse(c, worldMat));
+    };
+
+    traverse(root, null);
+};
+
+/* ============================================================
+   CONVERSATIONS
+   ============================================================ */
+const loadConversations = () => {
+    Ajax.call([{
+        methodname: 'mod_craftpilot_manage_conversations',
+        args: { action: 'list', instance_id: state.instanceId },
+    }])[0].then((resp) => {
+        const convs = resp.conversations || resp.data || [];
+        if (resp.success && convs.length > 0) {
+            state.conversations = convs;
+            const first = convs[0];
+            state.currentConvId    = first.conversation_id || first.id;
+            state.currentConvTitle = first.title || 'Chat';
+            renderConversations(convs, state.currentConvId);
+            updatePanelTitle(state.currentConvTitle);
+            loadMessages(state.currentConvId);
+        } else {
+            createConversation(generateUUID());
+        }
+    }).catch((err) => {
+        console.error('CraftPilot:', err);
+        showError('Failed to initialise chat. Please refresh the page.');
+    });
+};
+
+const createConversation = (id) => {
+    Ajax.call([{
+        methodname: 'mod_craftpilot_manage_conversations',
+        args: {
+            action: 'create',
+            conversation_id: id,
+            title: 'New conversation',
+            instance_id: state.instanceId,
+            metadata: JSON.stringify({ provider: 'fireworks', created: new Date().toISOString() }),
+        },
+    }])[0].then((resp) => {
+        if (resp.success) {
+            state.currentConvId    = id;
+            state.currentConvTitle = 'New conversation';
+            state.conversations.unshift({ conversation_id: id, title: 'New conversation', created_time: Math.floor(Date.now() / 1000) });
+            renderConversations(state.conversations, id);
+            updatePanelTitle(state.currentConvTitle);
+            showReady();
+        }
+    }).catch(err => console.error('CraftPilot:', err));
+};
+
+const startNewConversation = () => createConversation(generateUUID());
+
+const selectConversation = (id, title) => {
+    state.currentConvId    = id;
+    state.currentConvTitle = title;
+    updatePanelTitle(title);
+    clearSources();
+    renderConversations(state.conversations, id);
+    dom.messages.innerHTML = '';
+    loadMessages(id);
+};
+
+const deleteConversation = (id) => {
+    if (!window.confirm('Delete this conversation and all its messages?')) return;
+    Ajax.call([{
+        methodname: 'mod_craftpilot_manage_conversations',
+        args: { action: 'delete', conversation_id: id },
+    }])[0].then((resp) => {
+        if (!resp.success) return;
+        state.conversations = state.conversations.filter(
+            c => String(c.conversation_id || c.id) !== String(id)
+        );
+        if (String(state.currentConvId) === String(id)) {
+            /* Always clear messages and sources before loading next conversation */
+            dom.messages.innerHTML = '';
+            clearSources();
+
+            if (state.conversations.length > 0) {
+                const next = state.conversations[0];
+                selectConversation(next.conversation_id || next.id, next.title || 'Chat');
+            } else {
+                createConversation(generateUUID());
+            }
+        } else {
+            renderConversations(state.conversations, state.currentConvId);
+        }
+    }).catch(err => console.error('CraftPilot:', err));
+};
+
+/* ============================================================
+   CONVERSATION LIST RENDER
+   ============================================================ */
+const renderConversations = (convs, activeId) => {
+    if (!dom.convList) return;
+    dom.convList.innerHTML = '';
+
+    convs.forEach((conv) => {
+        const id   = String(conv.conversation_id || conv.id);
+        const item = document.createElement('div');
+        item.className = 'cp-conv-item' + (id === String(activeId) ? ' cp-conv-item--active' : '');
+        item.setAttribute('role', 'listitem');
+        item.dataset.id = id;
+
+        /* created_time may be seconds or ms — normalise */
+        const ts  = (conv.created_time || 0);
+        const ms  = ts > 1e10 ? ts : ts * 1000;
+        const date = new Date(ms).toLocaleDateString();
+
+        item.innerHTML =
+            '<div class="cp-conv-info">' +
+                '<span class="cp-conv-title">' + escapeHtml(conv.title || 'Chat') + '</span>' +
+                '<span class="cp-conv-date">' + date + '</span>' +
+            '</div>' +
+            '<button class="cp-conv-delete" aria-label="Delete conversation" title="Delete">' +
+                '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">' +
+                    '<polyline points="3 6 5 6 21 6"/>' +
+                    '<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>' +
+                '</svg>' +
+            '</button>';
+
+        item.addEventListener('click', (e) => {
+            if (e.target.closest('.cp-conv-delete')) {
+                e.stopPropagation();
+                deleteConversation(id);
+            } else {
+                selectConversation(id, conv.title || 'Chat');
+            }
+        });
+
+        dom.convList.appendChild(item);
+    });
+};
+
+/* ============================================================
+   MESSAGES
+   ============================================================ */
+const loadMessages = (convId) => {
+    Ajax.call([{
+        methodname: 'mod_craftpilot_manage_messages',
+        args: { action: 'load', conversation_id: convId },
+    }])[0].then((resp) => {
+        const msgs = resp.messages || resp.data || [];
+        if (resp.success && msgs.length > 0) {
+            dom.messages.innerHTML = '';
+            msgs.forEach(m => appendMessage(
+                (m.message_type === 'user' || m.role === 'user') ? 'user' : 'ai',
+                m.content,
+                false
+            ));
+            scrollBottom();
+        } else {
+            showReady();
+        }
+    }).catch(err => console.error('CraftPilot:', err));
+};
+
+const appendMessage = (role, content, animate) => {
+    hideEmpty();
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'cp-msg cp-msg--' + (role === 'user' ? 'user' : 'ai');
+    if (animate === false) wrapper.style.animation = 'none';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'cp-msg-bubble';
+
+    if (role === 'user') {
+        bubble.textContent = content;
+    } else {
+        bubble.innerHTML = window.marked ? window.marked.parse(content) : escapeHtml(content);
+    }
+
+    wrapper.appendChild(bubble);
+    dom.messages.appendChild(wrapper);
+    return wrapper;
+};
+
+const showTyping = () => {
+    hideEmpty();
+    const wrapper = document.createElement('div');
+    wrapper.className = 'cp-msg cp-msg--ai';
+    wrapper.id = 'cp-typing-indicator';
+    wrapper.innerHTML =
+        '<div class="cp-typing">' +
+            '<div class="cp-typing-dot"></div>' +
+            '<div class="cp-typing-dot"></div>' +
+            '<div class="cp-typing-dot"></div>' +
+        '</div>';
+    dom.messages.appendChild(wrapper);
+    scrollBottom();
+    return wrapper;
+};
+
+const hideEmpty = () => {
+    const el = document.getElementById('cp-empty-state');
+    if (el) el.parentNode.removeChild(el);
+};
+
+const showReady = () => {
+    if (document.getElementById('cp-empty-state')) return;
+    const el = document.createElement('div');
+    el.className = 'cp-empty-state';
+    el.id = 'cp-empty-state';
+    el.innerHTML =
+        '<svg class="cp-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">' +
+            '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>' +
+        '</svg>' +
+        '<p class="cp-empty-title">Ready to assist</p>' +
+        '<p class="cp-empty-sub">Ask a question about this content</p>';
+    dom.messages.appendChild(el);
+};
+
+const showError = (msg) => {
+    const el = appendMessage('ai', msg, true);
+    el.querySelector('.cp-msg-bubble').style.color = '#dc2626';
+};
+
+/* ============================================================
+   SEND MESSAGE + STREAM
+   ============================================================ */
+const sendMessage = () => {
+    const text = dom.input.value.trim();
+    if (!text || state.streaming) return;
+
+    if (!state.currentConvId) {
+        showError('Chat not ready yet — please wait a moment.');
+        return;
+    }
+
+    state.streaming      = true;
+    dom.input.disabled   = true;
+    dom.sendBtn.disabled = true;
+
+    appendMessage('user', text, true);
+    dom.input.value = '';
+    autoResize();
+    clearSources();
+    scrollBottom();
+
+    saveMessage(state.currentConvId, 'user', text);
+    streamFromBackend(text);
+};
+
+const streamFromBackend = (userMessage) => {
+    const typingEl = showTyping();
+
+    Ajax.call([{ methodname: 'mod_craftpilot_get_user_credentials', args: {} }])[0]
+        .then(() => {
+            return fetch(state.chatProxyUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: userMessage,
+                    conversation_thread_id: state.currentConvId,
+                }),
+            });
+        })
+        .then((res) => {
+            if (!res.ok) throw new Error('Backend responded ' + res.status);
+
+            /* Remove typing indicator, add empty AI bubble */
+            if (typingEl.parentNode) typingEl.parentNode.removeChild(typingEl);
+            const msgEl = appendMessage('ai', '', true);
+            const bubble = msgEl.querySelector('.cp-msg-bubble');
+            let fullResponse = '';
+
+            const reader  = res.body.getReader();
+            const decoder = new TextDecoder();
+            let buf = '';
+
+            const read = () => reader.read().then(({ done, value }) => {
+                if (done) {
+                    saveMessage(state.currentConvId, 'ai', fullResponse);
+                    finishStreaming();
+                    return;
+                }
+
+                buf += decoder.decode(value, { stream: true });
+                const lines = buf.split('\n');
+                buf = lines.pop();
+
+                lines.forEach((line) => {
+                    if (!line.trim()) return;
+                    try {
+                        const ev = JSON.parse(line);
+
+                        /* ── Video / BVH metadata ── */
+                        if (ev.event === 'video_metadata' && ev.data) {
+                            const vm    = ev.data;
+                            const isBVH = (vm.filename || '').toLowerCase().endsWith('.bvh');
+                            addSource({
+                                id:          vm.video_id || vm.bvh_id || vm.filename,
+                                type:        isBVH ? 'bvh' : 'video',
+                                filename:    vm.filename,
+                                video_url:   isBVH ? null : vm.video_url,
+                                bvh_url:     isBVH ? (vm.bvh_url || vm.video_url) : null,
+                                start_time:  vm.start_time,
+                                end_time:    vm.end_time,
+                                duration:    vm.duration,
+                                project_name: vm.project_name,
+                            });
+
+                        /* ── Explicit BVH metadata event ── */
+                        } else if (ev.event === 'bvh_metadata' && ev.data) {
+                            const bm = ev.data;
+                            addSource({
+                                id:          bm.bvh_id || bm.filename,
+                                type:        'bvh',
+                                filename:    bm.filename,
+                                bvh_url:     bm.bvh_url || bm.url,
+                                duration:    bm.duration,
+                                frame_count: bm.frame_count,
+                            });
+
+                        /* ── Streaming text chunk ── */
+                        } else if (ev.event === 'message' && ev.content) {
+                            ev.content.forEach((c) => { if (c.content) fullResponse += c.content; });
+                            bubble.innerHTML = window.marked
+                                ? window.marked.parse(fullResponse)
+                                : escapeHtml(fullResponse);
+                            scrollBottom();
+
+                        /* ── DONE marker ── */
+                        } else if (ev.content === '[DONE]') {
+                            /* nothing */
+
+                        /* ── Error from backend ── */
+                        } else if (ev.event === 'error' || ev.type === 'error') {
+                            if (msgEl.parentNode) msgEl.parentNode.removeChild(msgEl);
+                            showError(ev.message || 'The AI backend returned an error.');
+                            finishStreaming();
+                        }
+                    } catch (_) {
+                        /* non-JSON lines — ignore */
+                    }
+                });
+
+                return read();
+            });
+
+            return read();
+        })
+        .catch((err) => {
+            console.error('CraftPilot:', err);
+            if (typingEl.parentNode) typingEl.parentNode.removeChild(typingEl);
+            showError('Could not reach the AI backend. Please check the service is running.');
+            finishStreaming();
+        });
+};
+
+const finishStreaming = () => {
+    state.streaming      = false;
+    dom.input.disabled   = false;
+    dom.sendBtn.disabled = false;
+    dom.input?.focus();
+};
+
+/* ============================================================
+   SAVE MESSAGE  (fire-and-forget)
+   ============================================================ */
+const saveMessage = (convId, role, content) => {
+    Ajax.call([{
+        methodname: 'mod_craftpilot_manage_messages',
+        args: {
+            action:          'save',
+            conversation_id: convId,
+            message_type:    role === 'ai' ? 'ai' : 'user',
+            content,
+        },
+    }])[0].catch(err => console.error('CraftPilot save error:', err));
+};
+
+/* ============================================================
+   UI HELPERS
+   ============================================================ */
+const updatePanelTitle = (title) => {
+    if (dom.convTitle) dom.convTitle.textContent = title || 'CraftPilot';
+};
+
+const scrollBottom = () => {
+    if (dom.messages) dom.messages.scrollTop = dom.messages.scrollHeight;
+};
+
+const autoResize = () => {
+    const el = dom.input;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+};
+
+const generateUUID = () => {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+        const r = Math.random() * 16 | 0;
+        return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+    });
+};
+
+const escapeHtml = (s) => {
+    if (typeof s !== 'string') return '';
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+};
+
+const formatTime = (secs) => {
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = Math.floor(secs % 60);
+    return [h, m, s].map(n => String(n).padStart(2, '0')).join(':');
+};
+
+/* ── Inline SVG helpers ── */
+const svgClose = () =>
+    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">' +
+        '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>' +
+    '</svg>';
+
+const svgPlay = () =>
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+
+const svgPause = () =>
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">' +
+        '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>' +
+    '</svg>';

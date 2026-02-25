@@ -1,7 +1,7 @@
 <?php
 // This file is part of Moodle - http://moodle.org/
 
-namespace block_aiassistant\external;
+namespace mod_craftpilot\external;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -17,8 +17,8 @@ use context_system;
 /**
  * External API for managing conversations
  * 
- * @package    block_aiassistant
- * @copyright  2025 Your Organization
+ * @package    mod_craftpilot
+ * @copyright  2025
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class manage_conversations extends external_api {
@@ -31,14 +31,15 @@ class manage_conversations extends external_api {
             'action' => new external_value(PARAM_TEXT, 'Action to perform (create, list, update, delete)'),
             'conversation_id' => new external_value(PARAM_TEXT, 'Conversation ID', VALUE_DEFAULT, ''),
             'title' => new external_value(PARAM_TEXT, 'Conversation title', VALUE_DEFAULT, ''),
-            'metadata' => new external_value(PARAM_TEXT, 'Conversation metadata (JSON)', VALUE_DEFAULT, '')
+            'metadata' => new external_value(PARAM_TEXT, 'Conversation metadata (JSON)', VALUE_DEFAULT, ''),
+            'instance_id' => new external_value(PARAM_INT, 'Activity instance ID', VALUE_DEFAULT, 0)
         ]);
     }
 
     /**
      * Manage conversations (CRUD operations)
      */
-    public static function manage_conversations($action, $conversation_id = '', $title = '', $metadata = '') {
+    public static function manage_conversations($action, $conversation_id = '', $title = '', $metadata = '', $instance_id = 0) {
         global $USER, $DB;
 
         // Validate parameters
@@ -46,7 +47,8 @@ class manage_conversations extends external_api {
             'action' => $action,
             'conversation_id' => $conversation_id,
             'title' => $title,
-            'metadata' => $metadata
+            'metadata' => $metadata,
+            'instance_id' => $instance_id
         ]);
 
         // Validate context and require login
@@ -58,16 +60,16 @@ class manage_conversations extends external_api {
 
         try {
             // Check if database table exists
-            if (!$DB->get_manager()->table_exists('block_aiassistant_conv')) {
-                return self::error_response('Database table block_aiassistant_conv does not exist');
+            if (!$DB->get_manager()->table_exists('craftpilot_conv')) {
+                return self::error_response('Database table craftpilot_conv does not exist');
             }
 
             switch ($params['action']) {
                 case 'create':
-                    return self::create_conversation($USER->id, $params['conversation_id'], $params['title'], $params['metadata']);
+                    return self::create_conversation($USER->id, $params['conversation_id'], $params['title'], $params['metadata'], $params['instance_id']);
                     
                 case 'list':
-                    return self::list_conversations($USER->id);
+                    return self::list_conversations($USER->id, $params['instance_id']);
                     
                 case 'update':
                     return self::update_conversation($USER->id, $params['conversation_id'], $params['title'], $params['metadata']);
@@ -93,10 +95,10 @@ class manage_conversations extends external_api {
     /**
      * Create a new conversation
      */
-    private static function create_conversation(int $user_id, string $conversation_id, string $title, string $metadata = ''): array {
+    private static function create_conversation(int $user_id, string $conversation_id, string $title, string $metadata = '', int $instance_id = 0): array {
         global $DB;
 
-        self::log_debug("Creating conversation for user {$user_id} with ID {$conversation_id}");
+        self::log_debug("Creating conversation for user {$user_id} with ID {$conversation_id} for instance {$instance_id}");
 
         if (empty($conversation_id)) {
             return self::error_response('Conversation ID is required');
@@ -106,8 +108,12 @@ class manage_conversations extends external_api {
             return self::error_response('Conversation title is required');
         }
 
+        if (empty($instance_id)) {
+            return self::error_response('Instance ID is required');
+        }
+
         // Check if conversation already exists
-        $existing = $DB->get_record('block_aiassistant_conv', [
+        $existing = $DB->get_record('craftpilot_conv', [
             'conversation_id' => $conversation_id,
             'is_active' => 1
         ]);
@@ -119,6 +125,7 @@ class manage_conversations extends external_api {
         try {
             $record = new \stdClass();
             $record->conversation_id = $conversation_id;
+            $record->instanceid = $instance_id;
             $record->userid = $user_id;
             $record->title = $title;
             $record->created_time = time();
@@ -126,7 +133,7 @@ class manage_conversations extends external_api {
             $record->is_active = 1;
             $record->metadata = $metadata;
 
-            $id = $DB->insert_record('block_aiassistant_conv', $record);
+            $id = $DB->insert_record('craftpilot_conv', $record);
 
             self::log_debug("Created conversation with database ID {$id} for user {$user_id}");
 
@@ -147,18 +154,25 @@ class manage_conversations extends external_api {
     }
 
     /**
-     * List conversations for a user
+     * List conversations for a user, optionally filtered by instance
      */
-    private static function list_conversations(int $user_id): array {
+    private static function list_conversations(int $user_id, int $instance_id = 0): array {
         global $DB;
 
-        self::log_debug("Listing conversations for user {$user_id}");
+        self::log_debug("Listing conversations for user {$user_id}" . ($instance_id ? " for instance {$instance_id}" : ""));
 
         try {
-            $conversations = $DB->get_records('block_aiassistant_conv', [
+            $conditions = [
                 'userid' => $user_id,
                 'is_active' => 1
-            ], 'last_updated DESC');
+            ];
+            
+            // If instance_id is provided, filter by it
+            if ($instance_id > 0) {
+                $conditions['instanceid'] = $instance_id;
+            }
+            
+            $conversations = $DB->get_records('craftpilot_conv', $conditions, 'last_updated DESC');
 
             $conversation_list = [];
             foreach ($conversations as $conversation) {
@@ -199,7 +213,7 @@ class manage_conversations extends external_api {
         }
 
         try {
-            $conversation = $DB->get_record('block_aiassistant_conv', [
+            $conversation = $DB->get_record('craftpilot_conv', [
                 'conversation_id' => $conversation_id,
                 'userid' => $user_id,
                 'is_active' => 1
@@ -218,7 +232,7 @@ class manage_conversations extends external_api {
             }
             $conversation->last_updated = time();
 
-            $DB->update_record('block_aiassistant_conv', $conversation);
+            $DB->update_record('craftpilot_conv', $conversation);
 
             self::log_debug("Updated conversation {$conversation_id} for user {$user_id}");
 
@@ -250,7 +264,7 @@ class manage_conversations extends external_api {
         }
 
         try {
-            $conversation = $DB->get_record('block_aiassistant_conv', [
+            $conversation = $DB->get_record('craftpilot_conv', [
                 'conversation_id' => $conversation_id,
                 'userid' => $user_id,
                 'is_active' => 1
@@ -261,14 +275,14 @@ class manage_conversations extends external_api {
             }
 
             // Delete all messages associated with this conversation
-            $DB->delete_records('block_aiassistant_msg', [
+            $DB->delete_records('craftpilot_msg', [
                 'conversation_id' => $conversation_id
             ]);
 
             // Soft delete the conversation by setting is_active to 0
             $conversation->is_active = 0;
             $conversation->last_updated = time();
-            $DB->update_record('block_aiassistant_conv', $conversation);
+            $DB->update_record('craftpilot_conv', $conversation);
 
             self::log_debug("Deleted conversation {$conversation_id} and all its messages for user {$user_id}");
 
