@@ -43,7 +43,12 @@ $string['enablepromptbar_help'] = 'When enabled, students will see an AI chat in
 // Chat interface strings
 $string['promptplaceholder'] = 'Ask a question about this content...';
 $string['send'] = 'Send';
+$string['openchat'] = 'Open CraftPilot chat';
+$string['closechat'] = 'Close chat';
 $string['retrieveddocs'] = 'Retrieved Documents';
+$string['sources'] = 'Sources';
+$string['newconversation'] = 'New conversation';
+$string['conversations'] = 'Conversations';
 
 // Fireworks.ai Configuration
 $string['fireworks_heading'] = 'Fireworks.ai Configuration';
