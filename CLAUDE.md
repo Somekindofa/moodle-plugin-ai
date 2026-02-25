@@ -6,6 +6,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
+## Smoke Test
+
+Run after any change to verify the plugin is fully operational:
+
+```bash
+bash /var/www/html/public/mod/craftpilot/smoke_test.sh
+```
+
+Exit 0 = all pass, exit 1 = one or more failures. Checks:
+1. **AMD JS** — `amd/build/chat_interface.min.js` contains `define()` and has no raw ES6 `import`
+2. **PHP syntax** — all plugin `.php` files pass `php -l`
+3. **RAG backend** — `http://127.0.0.1:8000/api/health` returns `{"status":"healthy",...}`
+4. **DB tables** — `mdl_craftpilot`, `mdl_craftpilot_conv`, `mdl_craftpilot_msg` exist
+5. **External functions** — `mod_craftpilot_get_user_credentials`, `mod_craftpilot_manage_conversations`, `mod_craftpilot_manage_messages` registered
+6. **Capabilities** — `mod/craftpilot:view`, `mod/craftpilot:addinstance` registered
+7. **Assets** — `templates/chat_interface.mustache` and `styles.css` present and non-empty
+8. **Cache purge** — `php purge_caches.php` exits 0
+
+---
+
 ## Module Overview
 
 `mod_craftpilot` is a Moodle activity that combines a rich-content page with an AI chat panel. The chat streams responses from a RAG backend (`http://127.0.0.1:8000/api/chat` — server-local only) via a PHP streaming proxy, and surfaces retrieved media (video, BVH motion-capture, text) as interactive source cards.
