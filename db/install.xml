@@ -137,5 +137,21 @@
         <INDEX NAME="timestamp" UNIQUE="false" FIELDS="timestamp"/>
       </INDEXES>
     </TABLE>
+    <TABLE NAME="craftpilot_cm_index" COMMENT="Tracks which course modules have been indexed in ChromaDB and their content hashes">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="cmid" TYPE="int" LENGTH="10" NOTNULL="true"/>
+        <FIELD NAME="course_id" TYPE="int" LENGTH="10" NOTNULL="true"/>
+        <FIELD NAME="content_hash" TYPE="char" LENGTH="32" NOTNULL="true"/>
+        <FIELD NAME="last_indexed" TYPE="int" LENGTH="10" NOTNULL="true"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="cmid_unique" TYPE="unique" FIELDS="cmid"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="course_id" UNIQUE="false" FIELDS="course_id"/>
+      </INDEXES>
+    </TABLE>
   </TABLES>
 </XMLDB>

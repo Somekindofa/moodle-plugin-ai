@@ -90,9 +90,6 @@ echo $OUTPUT->box_end();
 
 // Display AI prompt bar if enabled.
 if ($instance->enable_promptbar) {
-    // Load marked.js for markdown rendering.
-    $PAGE->requires->js(new moodle_url('https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.js'), true);
-
     // Load AMD chat interface module.
     // Pass the proxy URL so the JS never hard-codes an internal address.
     $proxyurl = (new moodle_url('/mod/craftpilot/chat_proxy.php'))->out(false);

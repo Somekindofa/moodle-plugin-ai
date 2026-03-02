@@ -11,6 +11,7 @@
  */
 
 import * as Ajax from 'core/ajax';
+import * as MarkedLib from 'mod_craftpilot/marked';
 
 /* ============================================================
    STATE
@@ -28,6 +29,7 @@ const state = {
     streaming:     false,
     sources:       [],
     selectedDomain: null,  // craft domain selected by the user, forwarded to LLM
+    followUpQuestions: { A: null, B: null, C: null }, // A/B/C shortcuts from last AI response
 };
 
 /* DOM element references — populated in initDOM() */
@@ -967,7 +969,9 @@ const appendMessage = (role, content, animate) => {
     if (role === 'user') {
         bubble.textContent = content;
     } else {
-        bubble.innerHTML = window.marked ? window.marked.parse(content) : escapeHtml(content);
+        const clean = stripThinkTags(content);
+        bubble.innerHTML = renderMarkdown(clean);
+        extractFollowUpQuestions(clean);
     }
 
     wrapper.appendChild(bubble);
@@ -1019,12 +1023,19 @@ const showError = (msg) => {
    SEND MESSAGE + STREAM
    ============================================================ */
 const sendMessage = () => {
-    const text = dom.input.value.trim();
+    let text = dom.input.value.trim();
     if (!text || state.streaming) return;
 
     if (!state.currentConvId) {
         showError('Chat not ready yet — please wait a moment.');
         return;
+    }
+
+    // Expand single-letter A/B/C shortcuts to the stored follow-up question
+    if (/^[ABC]$/i.test(text)) {
+        const letter = text.toUpperCase();
+        const expanded = state.followUpQuestions[letter];
+        if (expanded) text = expanded;
     }
 
     state.streaming      = true;
@@ -1053,6 +1064,9 @@ const streamFromBackend = (userMessage) => {
             if (state.selectedDomain) {
                 payload.selected_domain = state.selectedDomain;
             }
+            if (state.courseId) {
+                payload.course_id = String(state.courseId);
+            }
             return fetch(state.chatProxyUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1074,7 +1088,11 @@ const streamFromBackend = (userMessage) => {
 
             const read = () => reader.read().then(({ done, value }) => {
                 if (done) {
-                    saveMessage(state.currentConvId, 'ai', fullResponse);
+                    // Final render: strip think tags, extract A/B/C questions
+                    const cleanFinal = stripThinkTags(fullResponse);
+                    bubble.innerHTML = renderMarkdown(cleanFinal);
+                    extractFollowUpQuestions(cleanFinal);
+                    saveMessage(state.currentConvId, 'ai', cleanFinal);
                     finishStreaming();
                     return;
                 }
@@ -1116,17 +1134,35 @@ const streamFromBackend = (userMessage) => {
                                 frame_count: bm.frame_count,
                             });
 
-                        /* ── Streaming text chunk ── */
+                        /* ── Individual token from streaming generate ── */
+                        } else if (ev.event === 'token' && ev.data) {
+                            fullResponse += ev.data;
+                            // Strip any partial <think> block before rendering
+                            const visible = stripThinkTags(fullResponse);
+                            bubble.innerHTML = renderMarkdown(visible);
+                            scrollBottom();
+
+                        /* ── Legacy full-message chunk (kept for compatibility) ── */
                         } else if (ev.event === 'message' && ev.content) {
                             ev.content.forEach((c) => { if (c.content) fullResponse += c.content; });
-                            bubble.innerHTML = window.marked
-                                ? window.marked.parse(fullResponse)
-                                : escapeHtml(fullResponse);
+                            const visible = stripThinkTags(fullResponse);
+                            bubble.innerHTML = renderMarkdown(visible);
                             scrollBottom();
+
+                        /* ── Document sources (sent after generation) ── */
+                        } else if (ev.event === 'documents' && Array.isArray(ev.data)) {
+                            ev.data.forEach((doc) => {
+                                if (doc.type === 'video_annotation') return; // already shown via video_metadata
+                                addSource({
+                                    id:   doc.source,
+                                    type: 'text',
+                                    filename: doc.source,
+                                });
+                            });
 
                         /* ── DONE marker ── */
                         } else if (ev.content === '[DONE]') {
-                            /* nothing */
+                            /* nothing — handled on stream close */
 
                         /* ── Error from backend ── */
                         } else if (ev.event === 'error' || ev.type === 'error') {
@@ -1205,6 +1241,38 @@ const escapeHtml = (s) => {
     const d = document.createElement('div');
     d.textContent = s;
     return d.innerHTML;
+};
+
+/** Remove <think>...</think> blocks (including multi-line) from model output. */
+const stripThinkTags = (s) => {
+    if (typeof s !== 'string') return s;
+    return s.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+};
+
+/** Ensure marked is configured then return parsed HTML, or escaped plain text. */
+const renderMarkdown = (text) => {
+    // Prefer the AMD-imported marked (guaranteed synchronous); fall back to window.marked.
+    const markedFn = (MarkedLib && MarkedLib.marked) ? MarkedLib.marked : window.marked;
+    if (!markedFn) return escapeHtml(text);
+    // Configure once: GitHub-flavoured markdown, line-breaks preserved
+    if (!window._cpMarkedConfigured) {
+        markedFn.setOptions({ gfm: true, breaks: true });
+        window._cpMarkedConfigured = true;
+    }
+    return markedFn.parse(text);
+};
+
+/**
+ * Parse the last AI response for A/B/C follow-up questions and store them.
+ * Matches lines like:  **A.** Question text
+ */
+const extractFollowUpQuestions = (text) => {
+    state.followUpQuestions = { A: null, B: null, C: null };
+    const pattern = /\*\*([ABC])\.\*\*\s+(.+)/g;
+    let m;
+    while ((m = pattern.exec(text)) !== null) {
+        state.followUpQuestions[m[1]] = m[2].trim();
+    }
 };
 
 const formatTime = (secs) => {

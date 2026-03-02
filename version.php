@@ -8,8 +8,8 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->component = 'block_aiassistant';
-$plugin->version = 2026011400; // Updated version to force Moodle upgrade for messages table
+$plugin->component = 'mod_craftpilot';
+$plugin->version = 2026022700; // Add cm_index table + event observer for course ingestion
 $plugin->requires = 2022041900; // Moodle 4.1
 $plugin->maturity = MATURITY_STABLE;
-$plugin->release = '0.4.1'; // Table name length fixes
+$plugin->release = '0.5.0'; // Course content ingestion into ChromaDB

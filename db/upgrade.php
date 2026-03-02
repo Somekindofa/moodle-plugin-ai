@@ -301,5 +301,32 @@ function xmldb_craftpilot_upgrade($oldversion) {
         error_log("CraftPilot: Legacy table/config migration complete");
     }
 
+    // Add craftpilot_cm_index table for course module indexing tracking
+    if ($oldversion < 2026022700) {
+        error_log("CraftPilot: Creating craftpilot_cm_index table");
+
+        $table = new xmldb_table('craftpilot_cm_index');
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('cmid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('course_id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('content_hash', XMLDB_TYPE_CHAR, '32', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('last_indexed', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('cmid_unique', XMLDB_KEY_UNIQUE, ['cmid']);
+
+        $table->add_index('course_id', XMLDB_INDEX_NOTUNIQUE, ['course_id']);
+
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+            error_log("CraftPilot: craftpilot_cm_index table created successfully");
+        } else {
+            error_log("CraftPilot: craftpilot_cm_index table already exists");
+        }
+
+        upgrade_plugin_savepoint(true, 2026022700, 'mod', 'craftpilot');
+        error_log("CraftPilot: cm_index upgrade savepoint reached");
+    }
+
     return true;
 }
