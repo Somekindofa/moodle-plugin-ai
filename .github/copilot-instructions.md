@@ -1,3 +1,41 @@
+Always check for the presence of a `CLAUDE.md` and a `MEMORY.md` file somewhere.
+
+## CRITICAL — This plugin is NOT running in production
+
+The plugin in this folder (`mod_craftpilot`) is **not the one loaded by Moodle**. The running plugin is `local_craftpilot` at `/var/www/html/public/local/craftpilot/`.
+
+How to confirm: open the browser Network tab while the chat is open. Every AJAX call will use a method name starting with `local_craftpilot_*` (e.g. `local_craftpilot_manage_conversations`) and the proxy URL will be `/local/craftpilot/chat_proxy.php`. Editing files in this `mod_craftpilot` folder has **no effect** in the browser.
+
+**Always edit the local plugin instead:**
+```bash
+# Edit JS source:
+/var/www/html/public/local/craftpilot/amd/src/chat_interface.js
+
+# After any JS edit — build then purge caches:
+cd /var/www/html/public/local/craftpilot && npx grunt babel
+php /var/www/html/admin/cli/purge_caches.php
+```
+
+## Conversation Isolation Bugs — Fixed in local_craftpilot (March 2026)
+
+These bugs were found and fixed in `/var/www/html/public/local/craftpilot/amd/src/chat_interface.js`. The `mod_craftpilot` copy was NOT fixed (and doesn't matter, since it isn't loaded).
+
+| Bug | Root cause | Fix applied |
+|-----|-----------|-------------|
+| New conversation shows old history | DOM only cleared inside an async callback — race window | All DOM/state resets moved **before** the AJAX call (sync); AJAX became fire-and-forget |
+| Source cards appear on wrong conversation | `addSource` wrote to a shared global with no ownership check | `addSource(item, ownerConvId)` silently drops sources that don't belong to the active conversation |
+| Source cards lost when switching conversations | No save/restore mechanism | `convStates` dict + `getConvState(id)` helper; `selectConversation` saves/restores per-conversation sources |
+| Old message history loads into wrong conversation | `loadMessages` AJAX could resolve after the user switched away | Guard: `if (convId !== state.currentConvId) return;` at top of the AJAX callback |
+| AI stream writes to wrong conversation | `state.currentConvId` read live inside a long async stream | `const streamConvId = state.currentConvId` captured once at stream start |
+| Stream arrives after user switches away | No staleness check at stream-open time | Check at `.then((res)=>` entry; cancels and discards body if user moved on |
+| Ghost source cards after `clearSources()` | Empty-items path only toggled CSS, never cleared DOM | Added `dom.sourcesScroll.innerHTML = ''` in the empty-items branch of `setSources` |
+
+---
+
+## About the developer
+
+The developer is a novice in fullstack development. When explaining anything — a bug, a fix, a design decision — use plain language. Avoid jargon and technical shorthand without explanation. If a concept needs a technical term, define it in the same sentence. Prefer analogies and concrete examples over abstract descriptions.
+
 # AI Assistant Block for Moodle - Copilot Instructions
 
 ## Architecture Overview

@@ -61,9 +61,11 @@ class get_user_credentials extends external_api {
 
             self::log_debug("Fireworks API key found, length: " . strlen($api_key));
 
+            // Never return the raw key to the client — return only a presence indicator.
+            // Actual API calls that need the key must go through the server-side proxy (chat_proxy.php).
             return [
                 'success' => true,
-                'api_key' => $api_key,
+                'api_key' => '',
                 'display_name' => 'Global Fireworks API Key',
                 'message' => 'Using global Fireworks API key'
             ];

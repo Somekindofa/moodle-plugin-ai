@@ -75,7 +75,7 @@ curl_setopt_array($ch, [
     CURLOPT_POST           => true,
     CURLOPT_POSTFIELDS     => json_encode($data),
     CURLOPT_HTTPHEADER     => ['Content-Type: application/json', 'Accept: application/json'],
-    CURLOPT_TIMEOUT        => 120,
+    CURLOPT_TIMEOUT        => 300,
     CURLOPT_CONNECTTIMEOUT => 10,
     CURLOPT_RETURNTRANSFER => false,  // Must be false for the write callback to work.
     CURLOPT_WRITEFUNCTION  => function($curl_handle, $chunk) {

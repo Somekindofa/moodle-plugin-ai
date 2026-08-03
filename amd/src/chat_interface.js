@@ -27,13 +27,28 @@ const state = {
     sidebarOpen:   false,
     chatOpen:      false,
     streaming:     false,
-    sources:       [],
+    /* Per-conversation state. Each entry: { sources: [] }
+     * Keyed by conversation ID (string). Lazily initialised via getConvState(). */
+    convStates:    {},
     selectedDomain: null,  // craft domain selected by the user, forwarded to LLM
     followUpQuestions: { A: null, B: null, C: null }, // A/B/C shortcuts from last AI response
 };
 
 /* DOM element references — populated in initDOM() */
 const dom = {};
+
+/* ============================================================
+   PER-CONVERSATION STATE
+   ============================================================ */
+/**
+ * Returns (and lazily creates) the state object for a given conversation.
+ * Shape: { sources: [] }
+ */
+const getConvState = (id) => {
+    const key = String(id);
+    if (!state.convStates[key]) state.convStates[key] = { sources: [] };
+    return state.convStates[key];
+};
 
 /* ============================================================
    PUBLIC INIT (AMD entry point)
@@ -166,11 +181,13 @@ const toggleSources = () => {
 };
 
 const setSources = (items) => {
-    state.sources = items;
+    console.log('[CP] setSources', items.length, 'items | currentConvId=', state.currentConvId, '| caller:', new Error().stack.split('\n')[2]?.trim());
     if (!dom.sources || !dom.sourcesScroll) return;
 
     if (!items.length) {
         dom.sources.classList.remove('cp-sources--visible', 'cp-sources--open');
+        dom.sourcesScroll.innerHTML = '';
+        if (dom.sourcesCount) dom.sourcesCount.textContent = '0';
         return;
     }
 
@@ -182,11 +199,23 @@ const setSources = (items) => {
     items.forEach(item => dom.sourcesScroll.appendChild(buildSourceCard(item)));
 };
 
-const addSource = (item) => {
-    /* deduplicate by id */
-    if (!state.sources.some(s => s.id === item.id)) {
-        state.sources.push(item);
-        setSources(state.sources);
+const addSource = (item, ownerConvId = state.currentConvId) => {
+    console.log('[CP] addSource | ownerConvId=', ownerConvId, '| currentConvId=', state.currentConvId, '| match=', String(ownerConvId) === String(state.currentConvId));
+    /* For text course-content items, deduplicate by url_key (multiple chunks
+     * from the same module all resolve to the same URL on click, so showing
+     * more than one card is redundant). Fall back to id for all other types.
+     *
+     * ownerConvId is captured at stream-dispatch time so in-flight streams
+     * always write to the correct conversation's source list, even if the
+     * user has switched away. The visible panel is only updated when the
+     * owning conversation is the one currently displayed. */
+    const convState = getConvState(ownerConvId);
+    const dedupKey  = item.url_key || item.id;
+    if (!convState.sources.some(s => (s.url_key || s.id) === dedupKey)) {
+        convState.sources.push(item);
+        if (String(ownerConvId) === String(state.currentConvId)) {
+            setSources(convState.sources);
+        }
     }
 };
 
@@ -393,25 +422,20 @@ const openBVHModal = (item) => {
 };
 
 /* ============================================================
-   TEXT MODAL  (paragraph context viewer)
+   TEXT MODAL  — redirects to the Moodle course module page
    ============================================================ */
 const openTextModal = (item) => {
-    const {overlay, modal, closeModal} = createModal();
+    if (!item.module_id || !item.module_type) return;
 
-    modal.innerHTML =
-        '<div class="cp-modal-header">' +
-            '<h2 class="cp-modal-title">' + escapeHtml(item.source || 'Document') + '</h2>' +
-            '<button class="cp-icon-btn cp-modal-close" aria-label="Close">' +
-                svgClose() +
-            '</button>' +
-        '</div>' +
-        '<div class="cp-text-modal-body">' +
-            '<p>' + escapeHtml(item.content || '') + '</p>' +
-        '</div>';
-
-    modal.querySelector('.cp-modal-close').addEventListener('click', closeModal);
-    document.body.appendChild(overlay);
-    requestAnimationFrame(() => overlay.classList.add('cp-modal-overlay--visible'));
+    let moduleUrl;
+    if (item.module_type === 'label') {
+        moduleUrl = '/course/view.php?id=' + encodeURIComponent(item.course_id)
+                  + '#module-' + encodeURIComponent(item.module_id);
+    } else {
+        moduleUrl = '/mod/' + encodeURIComponent(item.module_type)
+                  + '/view.php?id=' + encodeURIComponent(item.module_id);
+    }
+    window.open(moduleUrl, '_blank', 'noopener');
 };
 
 /* ============================================================
@@ -829,6 +853,24 @@ const loadConversations = () => {
 };
 
 const createConversation = (id) => {
+    // Update state and DOM SYNCHRONOUSLY before the AJAX fires.
+    // This is critical: any in-flight loadMessages or stream callbacks from
+    // the previous conversation check state.currentConvId for staleness.
+    // If we only update it inside .then(), those callbacks run during the
+    // async window and pass the stale check, writing old content into the
+    // new conversation's panel before we get a chance to clear it.
+    console.log('[CP] createConversation | was=', state.currentConvId, '| now=', id);
+    state.currentConvId    = id;
+    state.currentConvTitle = 'New conversation';
+    state.conversations.unshift({ conversation_id: id, title: 'New conversation', created_time: Math.floor(Date.now() / 1000) });
+    renderConversations(state.conversations, id);
+    updatePanelTitle(state.currentConvTitle);
+    dom.messages.innerHTML = '';
+    getConvState(id).sources = [];
+    clearSources();
+    showReady();
+
+    // Persist to DB in the background.
     Ajax.call([{
         methodname: 'mod_craftpilot_manage_conversations',
         args: {
@@ -838,25 +880,18 @@ const createConversation = (id) => {
             instance_id: state.instanceId,
             metadata: JSON.stringify({ provider: 'fireworks', created: new Date().toISOString() }),
         },
-    }])[0].then((resp) => {
-        if (resp.success) {
-            state.currentConvId    = id;
-            state.currentConvTitle = 'New conversation';
-            state.conversations.unshift({ conversation_id: id, title: 'New conversation', created_time: Math.floor(Date.now() / 1000) });
-            renderConversations(state.conversations, id);
-            updatePanelTitle(state.currentConvTitle);
-            showReady();
-        }
-    }).catch(err => console.error('CraftPilot:', err));
+    }])[0].catch(err => console.error('CraftPilot: failed to persist new conversation', err));
 };
 
 const startNewConversation = () => createConversation(generateUUID());
 
 const selectConversation = (id, title) => {
+    console.log('[CP] selectConversation | id=', id, '| sources in cache=', (getConvState(id).sources || []).length);
     state.currentConvId    = id;
     state.currentConvTitle = title;
     updatePanelTitle(title);
-    clearSources();
+    // Restore this conversation's sources (or hide panel if it has none)
+    setSources(getConvState(id).sources);
     renderConversations(state.conversations, id);
     dom.messages.innerHTML = '';
     loadMessages(id);
@@ -941,6 +976,11 @@ const loadMessages = (convId) => {
         methodname: 'mod_craftpilot_manage_messages',
         args: { action: 'load', conversation_id: convId },
     }])[0].then((resp) => {
+        // Guard: if the user switched conversations while this AJAX was in
+        // flight, discard the result — writing it to the DOM would show the
+        // wrong conversation's history in the current panel.
+        if (String(convId) !== String(state.currentConvId)) return;
+
         const msgs = resp.messages || resp.data || [];
         if (resp.success && msgs.length > 0) {
             dom.messages.innerHTML = '';
@@ -1045,21 +1085,28 @@ const sendMessage = () => {
     appendMessage('user', text, true);
     dom.input.value = '';
     autoResize();
+    // A new query replaces the previous sources for this conversation
+    getConvState(state.currentConvId).sources = [];
     clearSources();
     scrollBottom();
 
     saveMessage(state.currentConvId, 'user', text);
-    streamFromBackend(text);
+    const isFirst = state.currentConvTitle === 'New conversation';
+    streamFromBackend(text, isFirst);
 };
 
-const streamFromBackend = (userMessage) => {
+const streamFromBackend = (userMessage, isFirstMessage = false) => {
+    // Capture the conversation ID at dispatch time so a mid-stream conversation
+    // switch cannot redirect the response or sources to the wrong conversation.
+    const streamConvId = state.currentConvId;
     const typingEl = showTyping();
 
     Ajax.call([{ methodname: 'mod_craftpilot_get_user_credentials', args: {} }])[0]
         .then(() => {
             const payload = {
                 message: userMessage,
-                conversation_thread_id: state.currentConvId,
+                conversation_thread_id: streamConvId,
+                is_first_message: isFirstMessage,
             };
             if (state.selectedDomain) {
                 payload.selected_domain = state.selectedDomain;
@@ -1076,6 +1123,19 @@ const streamFromBackend = (userMessage) => {
         .then((res) => {
             if (!res.ok) throw new Error('Backend responded ' + res.status);
 
+            /* If the user switched / created a new conversation while the
+             * fetch was in flight, drain the response body silently.
+             * Never touch dom.messages — it now belongs to a different
+             * conversation. finishStreaming() must still be called so the
+             * input is re-enabled. */
+            if (String(streamConvId) !== String(state.currentConvId)) {
+                console.log('[CP] stream response arrived STALE | streamConvId=', streamConvId, '| currentConvId=', state.currentConvId, '— cancelling');
+                if (typingEl.parentNode) typingEl.parentNode.removeChild(typingEl);
+                res.body.cancel().catch(() => {});
+                finishStreaming();
+                return;
+            }
+
             /* Remove typing indicator, add empty AI bubble */
             if (typingEl.parentNode) typingEl.parentNode.removeChild(typingEl);
             const msgEl = appendMessage('ai', '', true);
@@ -1087,12 +1147,36 @@ const streamFromBackend = (userMessage) => {
             let buf = '';
 
             const read = () => reader.read().then(({ done, value }) => {
+                /* Conversation switched mid-stream — stop writing to the DOM.
+                 * The DB save still uses streamConvId so history is preserved. */
+                if (String(streamConvId) !== String(state.currentConvId)) {
+                    console.log('[CP] mid-stream stale | streamConvId=', streamConvId, '| currentConvId=', state.currentConvId, '| done=', done);
+                    if (done) {
+                        const cleanFinal = stripThinkTags(fullResponse);
+                        saveMessage(streamConvId, 'ai', cleanFinal);
+                        finishStreaming();
+                    } else {
+                        buf += decoder.decode(value, { stream: true });
+                        // Accumulate fullResponse from remaining tokens
+                        buf.split('\n').forEach((line) => {
+                            try {
+                                const ev = JSON.parse(line);
+                                if (ev.event === 'token' && ev.data) fullResponse += ev.data;
+                                else if (ev.event === 'message' && ev.content) ev.content.forEach(c => { if (c.content) fullResponse += c.content; });
+                            } catch (_) { /* ignore */ }
+                        });
+                        buf = '';
+                        read();
+                    }
+                    return;
+                }
+
                 if (done) {
                     // Final render: strip think tags, extract A/B/C questions
                     const cleanFinal = stripThinkTags(fullResponse);
                     bubble.innerHTML = renderMarkdown(cleanFinal);
                     extractFollowUpQuestions(cleanFinal);
-                    saveMessage(state.currentConvId, 'ai', cleanFinal);
+                    saveMessage(streamConvId, 'ai', cleanFinal);
                     finishStreaming();
                     return;
                 }
@@ -1106,8 +1190,29 @@ const streamFromBackend = (userMessage) => {
                     try {
                         const ev = JSON.parse(line);
 
+                        /* ── Conversation title (first message only) ── */
+                        if (ev.event === 'conversation_title' && ev.data) {
+                            const newTitle = ev.data;
+                            // Update the originating conversation in the sidebar list
+                            const conv = state.conversations.find(
+                                c => String(c.conversation_id || c.id) === String(streamConvId)
+                            );
+                            if (conv) conv.title = newTitle;
+                            // Only update the visible panel title if this stream is
+                            // still the active conversation
+                            if (String(streamConvId) === String(state.currentConvId)) {
+                                state.currentConvTitle = newTitle;
+                                updatePanelTitle(newTitle);
+                            }
+                            renderConversations(state.conversations, state.currentConvId);
+                            // Persist in DB
+                            Ajax.call([{
+                                methodname: 'mod_craftpilot_manage_conversations',
+                                args: { action: 'update', conversation_id: streamConvId, title: newTitle },
+                            }])[0].catch(err => console.error('CraftPilot: title persist failed', err));
+
                         /* ── Video / BVH metadata ── */
-                        if (ev.event === 'video_metadata' && ev.data) {
+                        } else if (ev.event === 'video_metadata' && ev.data) {
                             const vm    = ev.data;
                             const isBVH = (vm.filename || '').toLowerCase().endsWith('.bvh');
                             addSource({
@@ -1120,7 +1225,7 @@ const streamFromBackend = (userMessage) => {
                                 end_time:    vm.end_time,
                                 duration:    vm.duration,
                                 project_name: vm.project_name,
-                            });
+                            }, streamConvId);
 
                         /* ── Explicit BVH metadata event ── */
                         } else if (ev.event === 'bvh_metadata' && ev.data) {
@@ -1132,7 +1237,7 @@ const streamFromBackend = (userMessage) => {
                                 bvh_url:     bm.bvh_url || bm.url,
                                 duration:    bm.duration,
                                 frame_count: bm.frame_count,
-                            });
+                            }, streamConvId);
 
                         /* ── Individual token from streaming generate ── */
                         } else if (ev.event === 'token' && ev.data) {
@@ -1153,11 +1258,25 @@ const streamFromBackend = (userMessage) => {
                         } else if (ev.event === 'documents' && Array.isArray(ev.data)) {
                             ev.data.forEach((doc) => {
                                 if (doc.type === 'video_annotation') return; // already shown via video_metadata
+                                /* Compute the URL this card would open so we can
+                                 * deduplicate across chunks from the same module. */
+                                const _urlKey = doc.module_id && doc.module_type
+                                    ? (doc.module_type === 'label'
+                                        ? 'course/' + doc.course_id + '#module-' + doc.module_id
+                                        : 'mod/' + doc.module_type + '/' + doc.module_id)
+                                    : null;
                                 addSource({
-                                    id:   doc.source,
-                                    type: 'text',
-                                    filename: doc.source,
-                                });
+                                    id:           doc.source,
+                                    type:         'text',
+                                    source:       doc.module_name || doc.source,
+                                    content:      doc.page_content_preview,
+                                    module_id:    doc.module_id,
+                                    module_type:  doc.module_type,
+                                    course_id:    doc.course_id,
+                                    heading_path: doc.heading_path,
+                                    section_name: doc.section_name,
+                                    url_key:      _urlKey,
+                                }, streamConvId);
                             });
 
                         /* ── DONE marker ── */
